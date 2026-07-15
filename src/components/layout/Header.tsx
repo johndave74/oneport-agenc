@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Bell, Shield, Calendar, Clock, Anchor, Settings, Menu } from 'lucide-react';
+import { Bell, MessageSquare, Clock, Menu, Settings, LogOut, ChevronDown } from 'lucide-react';
 import { UserRole, Notification } from '@/types';
 
 interface OpsSummary {
@@ -11,25 +11,37 @@ interface OpsSummary {
 interface HeaderProps {
   currentView: string;
   userRole: UserRole;
-
+  userName: string;
   notifications: Notification[];
   onMarkAllRead: () => void;
   orgName: string;
   onToggleSidebar?: () => void;
+  onLogout?: () => void;
+  setView?: (view: string) => void;
   opsSummary?: OpsSummary;
 }
+
+const ROLE_LABELS: Record<UserRole, string> = {
+  PORT_AGENT: 'Port Agent',
+  SHIP_AGENT: 'Ship Agent',
+  PROTECTIVE_AGENT: 'Protective Agent',
+  ADMIN: 'System Admin'
+};
 
 export default function Header({
   currentView,
   userRole,
-
+  userName,
   notifications,
   onMarkAllRead,
   orgName,
   onToggleSidebar,
+  onLogout,
+  setView,
   opsSummary
 }: HeaderProps) {
   const [showNotifMenu, setShowNotifMenu] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [utcTime, setUtcTime] = useState('');
   const [localTime, setLocalTime] = useState('');
 
@@ -78,11 +90,12 @@ export default function Header({
   }, []);
 
   const unreadCount = notifications.filter(n => n.status === 'Unread').length;
+  const initials = userName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
   return (
-    <header className="h-16 bg-[#F4F7F9] border-b border-slate-200 px-4 md:px-6 flex items-center justify-between sticky top-0 z-40 shadow-[0_2px_8px_rgba(0,0,0,0.01)] select-none">
+    <header className="h-16 bg-[#F4F7F9] border-b border-slate-200 px-4 md:px-6 flex items-center justify-between sticky top-0 z-40 shadow-[0_2px_8px_rgba(0,0,0,0.01)] select-none gap-4">
       {/* Vantus Breadcrumb Style with Mobile Menu Toggle */}
-      <div className="flex items-center space-x-3.5 min-w-0">
+      <div className="flex items-center space-x-3.5 min-w-0 shrink-0">
         {onToggleSidebar && (
           <button
             onClick={onToggleSidebar}
@@ -92,7 +105,7 @@ export default function Header({
             <Menu className="h-4.5 w-4.5" />
           </button>
         )}
-        
+
         <div className="flex flex-col min-w-0">
           <h2 className="text-xs md:text-sm font-semibold text-slate-900 tracking-tight leading-none capitalize truncate max-w-[130px] sm:max-w-[280px]">
             {titles[currentView] || currentView}
@@ -111,22 +124,22 @@ export default function Header({
       </div>
 
       {/* Center Integrated Search (Non-functional elegant UI mockup like mockups) */}
-      <div className="hidden md:flex items-center flex-1 max-w-xs mx-6">
+      <div className="hidden md:flex items-center flex-1 max-w-2xl">
         <div className="relative w-full">
           <input
             type="text"
-            placeholder="Search transactions, vessels, records..."
-            className="w-full bg-white border border-slate-200 rounded-lg pl-3 pr-8 py-1.5 text-xs text-slate-600 placeholder-slate-400 focus:outline-none focus:border-[#6C4CE1] transition-all font-sans"
+            placeholder="Search port calls, vessels, voyages, invoices, documents..."
+            className="w-full bg-white border border-slate-200 rounded-lg pl-3 pr-14 py-2 text-xs text-slate-600 placeholder-slate-400 focus:outline-none focus:border-[#6C4CE1] transition-all font-sans"
           />
           <span className="absolute right-2.5 top-2 text-[10px] font-sans font-semibold text-slate-400 bg-slate-100 border border-slate-200 px-1 rounded">
-            ⌘K
+            Ctrl+K
           </span>
         </div>
       </div>
 
       {/* Right Side Utility Panel */}
-      <div className="flex items-center space-x-4">
-        
+      <div className="flex items-center space-x-3 shrink-0">
+
         {/* Port Time Indicators */}
         <div className="hidden lg:flex items-center space-x-3 bg-white border border-slate-150 rounded-lg px-3 py-1.5 text-[11px] font-sans font-semibold">
           <div className="flex items-center space-x-1.5 text-slate-500">
@@ -157,13 +170,20 @@ export default function Header({
           )}
         </div>
 
-
+        {/* Live Radio & Chat shortcut */}
+        <button
+          onClick={() => setView?.('messages')}
+          className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-200/50 rounded-lg border border-slate-300 transition-colors cursor-pointer"
+          title="Live Radio & Chat"
+        >
+          <MessageSquare className="h-4.5 w-4.5" />
+        </button>
 
         {/* Notifications Dropdown Toggle */}
         <div className="relative">
-          <button 
+          <button
             onClick={() => setShowNotifMenu(!showNotifMenu)}
-            className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-200/50 rounded-lg border border-slate-300 transition-colors relative"
+            className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-200/50 rounded-lg border border-slate-300 transition-colors relative cursor-pointer"
           >
             <Bell className="h-4.5 w-4.5" />
             {unreadCount > 0 && (
@@ -177,7 +197,7 @@ export default function Header({
               <div className="p-3.5 border-b border-slate-200 flex items-center justify-between bg-[#EBE5FF]">
                 <h4 className="text-xs font-sans font-semibold tracking-widest text-slate-600">Operational Alerts</h4>
                 {unreadCount > 0 && (
-                  <button 
+                  <button
                     onClick={() => {
                       onMarkAllRead();
                       setShowNotifMenu(false);
@@ -195,8 +215,8 @@ export default function Header({
                   </div>
                 ) : (
                   notifications.map((notif) => (
-                    <div 
-                      key={notif.id} 
+                    <div
+                      key={notif.id}
                       className={`p-3.5 text-xs transition-colors ${notif.status === 'Unread' ? 'bg-[#6C4CE1]/5 font-semibold' : 'hover:bg-slate-200/50'}`}
                     >
                       <div className="flex items-center justify-between mb-1.5">
@@ -217,13 +237,59 @@ export default function Header({
                 )}
               </div>
               <div className="p-2 border-t border-slate-200 bg-[#EBE5FF] text-center">
-                <button 
+                <button
                   onClick={() => setShowNotifMenu(false)}
                   className="text-xs text-slate-500 hover:text-slate-900 font-semibold"
                 >
                   Dismiss Overlay
                 </button>
               </div>
+            </div>
+          )}
+        </div>
+
+        {/* Organization display */}
+        <div className="hidden xl:flex flex-col items-end pl-1 pr-2 border-l border-slate-200 leading-tight">
+          <span className="text-xs font-bold text-slate-700 truncate max-w-[140px]">{orgName || 'Oneport Agenc'}</span>
+          <span className="text-[9px] text-slate-400 uppercase tracking-wider">Organization</span>
+        </div>
+
+        {/* User Profile */}
+        <div className="relative">
+          <button
+            onClick={() => setShowProfileMenu(!showProfileMenu)}
+            className="flex items-center space-x-2 pl-1 pr-2 py-1 rounded-lg hover:bg-slate-200/50 transition-colors cursor-pointer"
+          >
+            <div className="h-8 w-8 rounded-full bg-[#6C4CE1]/10 border border-[#6C4CE1]/20 flex items-center justify-center text-[#6C4CE1] font-black text-xs shrink-0">
+              {initials}
+            </div>
+            <div className="hidden sm:flex flex-col items-start leading-tight">
+              <span className="text-xs font-bold text-slate-800 truncate max-w-[110px]">{userName}</span>
+              <span className="text-[9px] text-slate-400 uppercase tracking-wider">{ROLE_LABELS[userRole]}</span>
+            </div>
+            <ChevronDown className="h-3.5 w-3.5 text-slate-400 hidden sm:block" />
+          </button>
+
+          {showProfileMenu && (
+            <div className="absolute right-0 mt-2.5 w-52 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden">
+              <div className="p-3 border-b border-slate-100">
+                <span className="text-xs font-bold text-slate-800 block truncate">{userName}</span>
+                <span className="text-[10px] text-slate-400">{ROLE_LABELS[userRole]}</span>
+              </div>
+              <button
+                onClick={() => { setView?.('settings'); setShowProfileMenu(false); }}
+                className="w-full flex items-center space-x-2 px-3 py-2.5 text-xs text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer"
+              >
+                <Settings className="h-3.5 w-3.5 text-slate-400" />
+                <span>Global Settings</span>
+              </button>
+              <button
+                onClick={() => { onLogout?.(); setShowProfileMenu(false); }}
+                className="w-full flex items-center space-x-2 px-3 py-2.5 text-xs text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer border-t border-slate-100"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+                <span>Terminate Session</span>
+              </button>
             </div>
           )}
         </div>

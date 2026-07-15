@@ -95,6 +95,11 @@ export const Db = {
     return unwrap(res as any);
   },
 
+  async deleteVoyage(id: string): Promise<void> {
+    const { error } = await supabase.from('voyages').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+  },
+
   // -------------------------------------------------------------- Tasks
   async getTasks(): Promise<Task[]> {
     const res = await supabase.from('tasks').select('*');

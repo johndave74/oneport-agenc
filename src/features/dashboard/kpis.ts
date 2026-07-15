@@ -14,6 +14,8 @@ export function isVoyageRelevantToday(v: Voyage, today: string): boolean {
 }
 
 export interface CommandKpis {
+  activePortCallsCount: number;
+  pilotPendingCount: number;
   todaysPortCalls: number;
   shipsAtBerth: number;
   expectedArrivals: number;
@@ -56,8 +58,14 @@ export function computeCommandKpis(args: {
 
   const outstandingTasks = tasks.filter(t => t.status !== 'Completed');
   const overdueTasks = outstandingTasks.filter(t => t.dueDate && new Date(t.dueDate).getTime() < nowMs);
+  const activeVoyages = voyages.filter(v => v.status !== 'Completed');
+  const pilotPendingCount = activeVoyages.filter(v =>
+    v.timeline.some(t => !t.completed && t.event.toLowerCase().includes('pilot'))
+  ).length;
 
   return {
+    activePortCallsCount: activeVoyages.length,
+    pilotPendingCount,
     todaysPortCalls: todaysVoyages.length,
     shipsAtBerth: vessels.filter(v => v.status === 'Berthed' || v.status === 'Cargo Operations').length,
     expectedArrivals: voyages.filter(v => v.eta?.slice(0, 10) === today && !v.actualEta).length,

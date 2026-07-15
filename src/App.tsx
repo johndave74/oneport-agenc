@@ -219,6 +219,21 @@ export default function App() {
     setVoyages(prev => prev.map(v => v.id === id ? updated : v));
   };
 
+  const handleDeleteVoyage = async (id: string) => {
+    if (!currentUser) return;
+    await Db.deleteVoyage(id);
+    // The schema cascade-deletes everything keyed to this voyage server-side
+    // (tasks, documents, expenses, messages, incidents, laytime calcs) —
+    // mirror that locally so the UI doesn't show orphaned rows until reload.
+    setVoyages(prev => prev.filter(v => v.id !== id));
+    setTasks(prev => prev.filter(t => t.voyageId !== id));
+    setDocuments(prev => prev.filter(d => d.voyageId !== id));
+    setExpenses(prev => prev.filter(e => e.voyageId !== id));
+    setMessages(prev => prev.filter(m => m.voyageId !== id));
+    setIncidents(prev => prev.filter(i => i.voyageId !== id));
+    setLaytimeCalculations(prev => prev.filter(l => l.voyageId !== id));
+  };
+
   const handleToggleTimelineEvent = async (voyageId: string, eventIndex: number) => {
     if (!currentUser) return;
     const voyage = voyages.find(v => v.id === voyageId);
@@ -340,7 +355,6 @@ export default function App() {
           tasks={tasks}
           expenses={expenses}
           incidents={incidents}
-          auditLogs={auditLogs}
           users={users}
           laytimeCalculations={laytimeCalculations}
           onCompleteTask={handleCompleteTask}
@@ -354,9 +368,9 @@ export default function App() {
 
     switch (currentView) {
       case 'planning': return <PlanningCenterView vessels={vessels} voyages={voyages} tasks={tasks} users={users} />;
-      case 'dashboard': return <DashboardView userRole={currentUser.role} userName={currentUser.name} vessels={vessels} voyages={voyages} tasks={tasks} expenses={expenses} incidents={incidents} auditLogs={auditLogs} users={users} laytimeCalculations={laytimeCalculations} onCompleteTask={handleCompleteTask} onApproveExpense={handleApproveExpense} onRejectExpense={handleRejectExpense} onCreateIncident={handleCreateIncident} setView={setView} />;
+      case 'dashboard': return <DashboardView userRole={currentUser.role} userName={currentUser.name} vessels={vessels} voyages={voyages} tasks={tasks} expenses={expenses} incidents={incidents} users={users} laytimeCalculations={laytimeCalculations} onCompleteTask={handleCompleteTask} onApproveExpense={handleApproveExpense} onRejectExpense={handleRejectExpense} onCreateIncident={handleCreateIncident} setView={setView} />;
       case 'vessels': return <VesselsView vessels={vessels} users={users} onAddVessel={handleAddVessel} onEditVessel={handleEditVessel} onDeleteVessel={handleDeleteVessel} onUpdateVesselStatus={handleUpdateVesselStatus} userRole={currentUser.role} />;
-      case 'voyages': return <VoyagesView voyages={voyages} vessels={vessels} onAddVoyage={handleAddVoyage} onUpdateCargoDetails={handleUpdateCargoDetails} onToggleTimelineEvent={handleToggleTimelineEvent} userRole={currentUser.role} />;
+      case 'voyages': return <VoyagesView voyages={voyages} vessels={vessels} onAddVoyage={handleAddVoyage} onUpdateCargoDetails={handleUpdateCargoDetails} onDeleteVoyage={handleDeleteVoyage} onToggleTimelineEvent={handleToggleTimelineEvent} userRole={currentUser.role} />;
       case 'tasks': return <TasksView tasks={tasks} voyages={voyages} onAddTask={handleAddTask} onUpdateTaskStatus={handleUpdateTaskStatus} userRole={currentUser.role} />;
       case 'documents': return <DocumentsView documents={documents} voyages={voyages} onUploadDocument={handleUploadDocument} onDeleteDocument={handleDeleteDocument} userName={currentUser.name} />;
       case 'expenses': return <ExpensesView expenses={expenses} voyages={voyages} documents={documents} onUploadDocument={handleUploadDocument} onDeleteDocument={handleDeleteDocument} onAddExpense={handleAddExpense} onApproveExpense={handleApproveExpense} onRejectExpense={handleRejectExpense} userRole={currentUser.role} userName={currentUser.name} />;
@@ -390,7 +404,7 @@ export default function App() {
     <div className="flex bg-[#F4F7F9] min-h-screen text-slate-800 antialiased font-sans relative">
       <Sidebar currentView={currentView} setView={setView} userRole={currentUser.role} userName={currentUser.name} onLogout={handleLogout} isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
       <div className="flex-1 flex flex-col min-w-0">
-        <Header currentView={currentView} userRole={currentUser.role} notifications={notifications} onMarkAllRead={handleMarkAllNotificationsRead} orgName={orgName} onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} opsSummary={opsSummary} />
+        <Header currentView={currentView} userRole={currentUser.role} userName={currentUser.name} notifications={notifications} onMarkAllRead={handleMarkAllNotificationsRead} orgName={orgName} onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} onLogout={handleLogout} setView={setView} opsSummary={opsSummary} />
         <main className="flex-1 overflow-y-auto p-4 md:p-8">
           {renderMainView()}
         </main>

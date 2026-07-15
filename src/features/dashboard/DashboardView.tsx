@@ -36,17 +36,18 @@ import {
   Task,
   Expense,
   Incident,
-  AuditLog,
   User,
   LaytimeCalculation
 } from '@/types';
 import { computeCommandKpis } from './kpis';
 import { computeRuleFindings } from './aiRulesEngine';
-import AiOperationsAssistant from './AiOperationsAssistant';
-import LiveOperationsFeed from './LiveOperationsFeed';
+import OperationalAlerts from './AiOperationsAssistant';
 import TodaysPortCalls from './TodaysPortCalls';
 import OperationsChecklist from './OperationsChecklist';
 import IncidentCentre from './IncidentCentre';
+import OperationsStatusBar from './OperationsStatusBar';
+import TasksOverviewChart from './TasksOverviewChart';
+import PlanningPreview from './PlanningPreview';
 
 interface DashboardViewProps {
   userRole: UserRole;
@@ -56,7 +57,6 @@ interface DashboardViewProps {
   tasks: Task[];
   expenses: Expense[];
   incidents: Incident[];
-  auditLogs?: AuditLog[];
   users?: User[];
   laytimeCalculations?: LaytimeCalculation[];
   onCompleteTask: (taskId: string) => void;
@@ -82,7 +82,6 @@ export default function DashboardView({
   tasks,
   expenses,
   incidents,
-  auditLogs = [],
   users = [],
   laytimeCalculations = [],
   onCompleteTask,
@@ -173,14 +172,14 @@ export default function DashboardView({
           { label: 'Active Maritime Incidents', val: openIncidents.length, footer: 'Currently unresolved', icon: AlertTriangle, color: 'text-rose-600 bg-rose-50' },
           { label: 'Demurrage Risk', val: demurrageRiskCount, footer: `${kpis.demurrageExceededCount} exceeded · ${kpis.demurrageNearingCount} nearing`, icon: Clock, color: 'text-red-600 bg-red-50' },
           { label: 'High Cost Overruns Flagged', val: kpis.highCostOverrunsCount, footer: '>20% over PDA estimate', icon: DollarSign, color: 'text-amber-600 bg-amber-50' },
-          { label: 'Critical Alerts', val: criticalAlertsCount, footer: 'From the AI Operations Assistant', icon: Sparkles, color: 'text-emerald-600 bg-emerald-50' },
+          { label: 'Critical Alerts', val: criticalAlertsCount, footer: 'From Operational Alerts', icon: Sparkles, color: 'text-emerald-600 bg-emerald-50' },
         ];
       case 'ADMIN':
       default:
         return [
           { label: "Today's Port Calls", val: kpis.todaysPortCalls, footer: `${kpis.expectedArrivals} arriving · ${kpis.expectedDepartures} departing`, icon: CalendarCheck, color: 'text-[#6C4CE1] bg-[#6C4CE1]/10' },
           { label: 'Pending FDA', val: `$${kpis.pendingFdaAmount.toLocaleString()}`, footer: `${kpis.pendingFdaCount} awaiting approval`, icon: DollarSign, color: 'text-emerald-600 bg-emerald-50' },
-          { label: 'Critical Alerts', val: criticalAlertsCount, footer: 'From the AI Operations Assistant', icon: AlertTriangle, color: 'text-rose-600 bg-rose-50' },
+          { label: 'Critical Alerts', val: criticalAlertsCount, footer: 'From Operational Alerts', icon: AlertTriangle, color: 'text-rose-600 bg-rose-50' },
           { label: 'Outstanding Tasks', val: kpis.outstandingTasksCount, footer: `${kpis.overdueTasksCount} overdue`, icon: CheckSquare, color: 'text-[#6C4CE1] bg-[#6C4CE1]/10/70' },
         ];
     }
@@ -188,6 +187,14 @@ export default function DashboardView({
 
   return (
     <div className="space-y-8 p-1">
+      <OperationsStatusBar
+        activePortCalls={kpis.activePortCallsCount}
+        shipsAtBerth={kpis.shipsAtBerth}
+        pilotPending={kpis.pilotPendingCount}
+        laytimeRunning={kpis.laytimeRunningCount}
+        openIncidents={openIncidents.length}
+      />
+
       {/* Top Welcome Banner */}
       <div className="bg-white border border-slate-200 rounded-2xl p-6 text-slate-800 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center relative overflow-hidden">
         <div className="absolute right-0 bottom-0 opacity-5 pointer-events-none transform translate-x-12 translate-y-6">
@@ -398,6 +405,8 @@ export default function DashboardView({
               </div>
 
               <TodaysPortCalls voyages={voyages} vessels={vessels} users={users} setView={setView} />
+
+              <PlanningPreview voyages={voyages} setView={setView} />
             </>
           ) : (
             <div className="space-y-6">
@@ -499,9 +508,9 @@ export default function DashboardView({
         {/* Col 3: Sidebar Contextual Action Panels */}
         <div className="space-y-6">
 
-          <AiOperationsAssistant findings={findings} setView={setView} />
+          <OperationalAlerts findings={findings} setView={setView} />
 
-          <LiveOperationsFeed voyages={voyages} auditLogs={auditLogs} />
+          <TasksOverviewChart tasks={tasks} setView={setView} />
 
           {/* Expenses awaiting approval (Visible to PROTECTIVE_AGENT or ADMIN for auditing / approval) */}
           {(userRole === 'PROTECTIVE_AGENT' || userRole === 'ADMIN') && (
