@@ -1,0 +1,6 @@
+{
+  "name": "Oneport Agenc",
+  "description": "A comprehensive maritime operations portal for Port Agents, Ship Agents, and Protective Agents to coordinate vessels, cargo, finances, and clearances.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
