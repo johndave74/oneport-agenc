@@ -1,5 +1,5 @@
 import React from 'react';
-import { Anchor, Ship, UserCheck, Clock, AlertTriangle } from 'lucide-react';
+import { Anchor, Ship, UserCheck, Clock, AlertTriangle, ChevronRight } from 'lucide-react';
 
 interface OperationsStatusBarProps {
   activePortCalls: number;
@@ -7,15 +7,16 @@ interface OperationsStatusBarProps {
   pilotPending: number;
   laytimeRunning: number;
   openIncidents: number;
+  setView: (view: string) => void;
 }
 
-export default function OperationsStatusBar({ activePortCalls, shipsAtBerth, pilotPending, laytimeRunning, openIncidents }: OperationsStatusBarProps) {
+export default function OperationsStatusBar({ activePortCalls, shipsAtBerth, pilotPending, laytimeRunning, openIncidents, setView }: OperationsStatusBarProps) {
   const items = [
-    { icon: Anchor, label: 'Active Port Calls', value: activePortCalls },
-    { icon: Ship, label: 'Ships at Berth', value: shipsAtBerth },
-    { icon: UserCheck, label: 'Pilot Pending', value: pilotPending },
-    { icon: Clock, label: 'Laytime Running', value: laytimeRunning },
-    { icon: AlertTriangle, label: 'Open Incidents', value: openIncidents },
+    { icon: Anchor, label: 'Active Port Calls', value: activePortCalls, color: 'text-sky-500' },
+    { icon: Ship, label: 'Ships at Berth', value: shipsAtBerth, color: 'text-[#6C4CE1]' },
+    { icon: UserCheck, label: 'Pilot Pending', value: pilotPending, color: 'text-amber-500' },
+    { icon: Clock, label: 'Laytime Running', value: laytimeRunning, color: 'text-[#6C4CE1]' },
+    { icon: AlertTriangle, label: 'Open Incidents', value: openIncidents, color: 'text-rose-500' },
   ];
 
   return (
@@ -29,12 +30,19 @@ export default function OperationsStatusBar({ activePortCalls, shipsAtBerth, pil
         const Icon = item.icon;
         return (
           <div key={item.label} className="flex items-center space-x-2">
-            <Icon className="h-4 w-4 text-slate-400" />
+            <Icon className={`h-4 w-4 ${item.color}`} />
             <span className="text-xs text-slate-500">{item.label}</span>
             <span className="text-sm font-bold text-slate-800">{item.value}</span>
           </div>
         );
       })}
+      <button
+        onClick={() => setView('voyages')}
+        className="ml-auto flex items-center space-x-0.5 text-xs font-semibold text-[#6C4CE1] hover:text-[#6C4CE1]/80 cursor-pointer shrink-0"
+      >
+        <span>View All Status</span>
+        <ChevronRight className="h-3.5 w-3.5" />
+      </button>
     </div>
   );
 }

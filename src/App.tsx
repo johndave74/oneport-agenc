@@ -24,6 +24,7 @@ import { computeRuleFindings } from '@/features/dashboard/aiRulesEngine';
 // Component imports
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
+import CommandPalette from '@/components/layout/CommandPalette';
 import DashboardView from '@/features/dashboard/DashboardView';
 import PlanningCenterView from '@/features/planning/PlanningCenterView';
 import VesselsView from '@/features/vessels/VesselsView';
@@ -46,6 +47,7 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [currentView, setView] = useState<string>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
   const [selectedRole, setSelectedRole] = useState<string | undefined>();
 
@@ -179,12 +181,13 @@ export default function App() {
     clearWorkspaceData();
   };
 
-  const handleAddVessel = async (newVessel: Omit<Vessel, 'id'>) => {
-    if (!currentUser) return;
+  const handleAddVessel = async (newVessel: Omit<Vessel, 'id'>): Promise<Vessel> => {
+    if (!currentUser) throw new Error('Not authenticated.');
     const item = await Db.addVessel(newVessel);
     setVessels(prev => [...prev, item]);
     const log = await Db.addAuditLog(currentUser.id, currentUser.name, 'Vessel Registered', `Created vessel record ${newVessel.vesselName} (IMO ${newVessel.imoNumber}).`);
     setAuditLogs(prev => [log, ...prev]);
+    return item;
   };
 
   const handleEditVessel = async (updatedVessel: Vessel) => {
@@ -370,7 +373,7 @@ export default function App() {
       case 'planning': return <PlanningCenterView vessels={vessels} voyages={voyages} tasks={tasks} users={users} />;
       case 'dashboard': return <DashboardView userRole={currentUser.role} userName={currentUser.name} vessels={vessels} voyages={voyages} tasks={tasks} expenses={expenses} incidents={incidents} users={users} laytimeCalculations={laytimeCalculations} onCompleteTask={handleCompleteTask} onApproveExpense={handleApproveExpense} onRejectExpense={handleRejectExpense} onCreateIncident={handleCreateIncident} setView={setView} />;
       case 'vessels': return <VesselsView vessels={vessels} users={users} onAddVessel={handleAddVessel} onEditVessel={handleEditVessel} onDeleteVessel={handleDeleteVessel} onUpdateVesselStatus={handleUpdateVesselStatus} userRole={currentUser.role} />;
-      case 'voyages': return <VoyagesView voyages={voyages} vessels={vessels} onAddVoyage={handleAddVoyage} onUpdateCargoDetails={handleUpdateCargoDetails} onDeleteVoyage={handleDeleteVoyage} onToggleTimelineEvent={handleToggleTimelineEvent} userRole={currentUser.role} />;
+      case 'voyages': return <VoyagesView voyages={voyages} vessels={vessels} onAddVoyage={handleAddVoyage} onAddVessel={handleAddVessel} onUpdateCargoDetails={handleUpdateCargoDetails} onDeleteVoyage={handleDeleteVoyage} onToggleTimelineEvent={handleToggleTimelineEvent} userRole={currentUser.role} />;
       case 'tasks': return <TasksView tasks={tasks} voyages={voyages} onAddTask={handleAddTask} onUpdateTaskStatus={handleUpdateTaskStatus} userRole={currentUser.role} />;
       case 'documents': return <DocumentsView documents={documents} voyages={voyages} onUploadDocument={handleUploadDocument} onDeleteDocument={handleDeleteDocument} userName={currentUser.name} />;
       case 'expenses': return <ExpensesView expenses={expenses} voyages={voyages} documents={documents} onUploadDocument={handleUploadDocument} onDeleteDocument={handleDeleteDocument} onAddExpense={handleAddExpense} onApproveExpense={handleApproveExpense} onRejectExpense={handleRejectExpense} userRole={currentUser.role} userName={currentUser.name} />;
@@ -404,11 +407,23 @@ export default function App() {
     <div className="flex bg-[#F4F7F9] min-h-screen text-slate-800 antialiased font-sans relative">
       <Sidebar currentView={currentView} setView={setView} userRole={currentUser.role} userName={currentUser.name} onLogout={handleLogout} isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
       <div className="flex-1 flex flex-col min-w-0">
-        <Header currentView={currentView} userRole={currentUser.role} userName={currentUser.name} notifications={notifications} onMarkAllRead={handleMarkAllNotificationsRead} orgName={orgName} onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} onLogout={handleLogout} setView={setView} opsSummary={opsSummary} />
+        <Header currentView={currentView} userRole={currentUser.role} userName={currentUser.name} notifications={notifications} onMarkAllRead={handleMarkAllNotificationsRead} orgName={orgName} onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} onLogout={handleLogout} setView={setView} onOpenCommandPalette={() => setIsCommandPaletteOpen(true)} opsSummary={opsSummary} />
         <main className="flex-1 overflow-y-auto p-4 md:p-8">
           {renderMainView()}
         </main>
       </div>
+      <CommandPalette
+        isOpen={isCommandPaletteOpen}
+        onOpen={() => setIsCommandPaletteOpen(true)}
+        onClose={() => setIsCommandPaletteOpen(false)}
+        voyages={voyages}
+        vessels={vessels}
+        tasks={tasks}
+        documents={documents}
+        expenses={expenses}
+        users={users}
+        setView={setView}
+      />
     </div>
   );
 }

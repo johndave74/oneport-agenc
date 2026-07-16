@@ -44,38 +44,44 @@ export default function Sidebar({ currentView, setView, userRole, userName, onLo
     if (onClose) onClose();
   };
 
-  // Grouped menu structure like high-end Dynamics 365 / Vantus ERP
+  // Grouped menu structure, organized around how maritime agents actually work:
+  // Port Calls first among operational records, commercial/maritime-ops split
+  // out, and only groups/items that map to a real page are shown.
   const rawGroups = [
     {
-      title: "Core Operations",
+      title: "Operations",
       items: [
-        { id: 'dashboard', label: 'Dashboard Center', icon: LayoutDashboard },
-        { id: 'planning', label: 'Planning Center', icon: Calendar },
-        { id: 'vessels', label: 'Vessel Registry', icon: Ship },
-        { id: 'voyages', label: 'Voyage Logistics', icon: Compass },
+        { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+        { id: 'planning', label: 'Planning Centre', icon: Calendar },
+        { id: 'voyages', label: 'Port Calls', icon: Compass },
+        { id: 'vessels', label: 'Vessels', icon: Ship },
+        { id: 'tasks', label: 'Tasks', icon: CheckSquare },
       ]
     },
     {
-      title: "Work & Dispatch",
+      title: "Commercial",
       items: [
-        { id: 'tasks', label: 'Service Tasks', icon: CheckSquare },
-        { id: 'documents', label: 'Digital Folders', icon: FileText },
+        { id: 'expenses', label: 'Disbursements (PDA · FDA)', icon: DollarSign },
       ]
     },
     {
-      title: "Financial Control",
+      title: "Maritime Operations",
       items: [
-        { id: 'expenses', label: 'Disbursement Accounts', icon: DollarSign },
-        { id: 'laytime', label: 'Laytime Ledger', icon: Calculator },
+        { id: 'laytime', label: 'Laytime & Demurrage', icon: Calculator },
       ]
     },
     {
-      title: "Hub Channels",
+      title: "Documents & Partners",
       items: [
-        { id: 'crm', label: 'Agent Directory', icon: Users },
-        { id: 'messages', label: 'Live Radio & Chat', icon: MessageSquare },
-        { id: 'reports', label: 'Intelligence Reports', icon: BarChart2 },
-        { id: 'notifications', label: 'System Alerts', icon: Bell },
+        { id: 'documents', label: 'Documents', icon: FileText },
+        { id: 'crm', label: 'Partners', icon: Users },
+        { id: 'messages', label: 'Communications', icon: MessageSquare },
+      ]
+    },
+    {
+      title: "Reports & Analytics",
+      items: [
+        { id: 'reports', label: 'Reports & Analytics', icon: BarChart2 },
       ]
     }
   ];
@@ -86,7 +92,7 @@ export default function Sidebar({ currentView, setView, userRole, userName, onLo
     items: group.items.filter(item => allowedViews.includes(item.id))
   })).filter(group => group.items.length > 0);
 
-  const adminItem = { id: 'admin', label: 'System Governance', icon: ShieldAlert };
+  const adminItem = { id: 'admin', label: 'Users & Roles', icon: ShieldAlert };
 
   return (
     <>
@@ -168,17 +174,17 @@ export default function Sidebar({ currentView, setView, userRole, userName, onLo
             </div>
           ))}
 
-          {/* System Administration group */}
+          {/* Administration group (ADMIN role only) */}
           {userRole === 'ADMIN' && (
             <div className="space-y-1.5">
               <span className="px-3 text-[9px] font-black uppercase text-slate-500 tracking-widest font-mono block">
-                Governance
+                Administration
               </span>
               <button
                 onClick={() => handleItemClick(adminItem.id)}
                 className={`w-full flex items-center space-x-2.5 px-3 py-2 rounded-lg text-xs font-bold transition-all duration-150 text-left ${
-                  currentView === adminItem.id 
-                    ? 'bg-[#6C4CE1] text-white shadow-sm shadow-[#6C4CE1]/20' 
+                  currentView === adminItem.id
+                    ? 'bg-[#6C4CE1] text-white shadow-sm shadow-[#6C4CE1]/20'
                     : 'text-slate-500 hover:bg-[#F2EFFF] hover:text-[#6C4CE1]'
                 }`}
               >
@@ -188,22 +194,38 @@ export default function Sidebar({ currentView, setView, userRole, userName, onLo
             </div>
           )}
 
-          {/* Global Settings */}
+          {/* Account: Notifications + Settings */}
           <div className="space-y-1.5">
             <span className="px-3 text-[9px] font-black uppercase text-slate-500 tracking-widest font-mono block">
-              Preferences
+              Account
             </span>
-            <button
-              onClick={() => handleItemClick('settings')}
-              className={`w-full flex items-center space-x-2.5 px-3 py-2 rounded-lg text-xs font-bold transition-all duration-150 text-left ${
-                currentView === 'settings' 
-                  ? 'bg-[#6C4CE1] text-white shadow-sm shadow-[#6C4CE1]/20' 
-                  : 'text-slate-500 hover:bg-[#F2EFFF] hover:text-[#6C4CE1]'
-              }`}
-            >
-              <Settings className={`h-4 w-4 shrink-0 ${currentView === 'settings' ? 'text-white' : 'text-slate-400'}`} />
-              <span className="truncate">Global Settings</span>
-            </button>
+            <div className="space-y-0.5">
+              <button
+                onClick={() => handleItemClick('notifications')}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-bold transition-all duration-150 text-left ${
+                  currentView === 'notifications'
+                    ? 'bg-[#6C4CE1] text-white shadow-sm shadow-[#6C4CE1]/20'
+                    : 'text-slate-500 hover:bg-[#F2EFFF] hover:text-[#6C4CE1]'
+                }`}
+              >
+                <div className="flex items-center space-x-2.5">
+                  <Bell className={`h-4 w-4 shrink-0 ${currentView === 'notifications' ? 'text-white' : 'text-slate-400'}`} />
+                  <span className="truncate">Notifications</span>
+                </div>
+                <span className={`h-1.5 w-1.5 rounded-full ${currentView === 'notifications' ? 'bg-white' : 'bg-rose-500 animate-pulse'}`} />
+              </button>
+              <button
+                onClick={() => handleItemClick('settings')}
+                className={`w-full flex items-center space-x-2.5 px-3 py-2 rounded-lg text-xs font-bold transition-all duration-150 text-left ${
+                  currentView === 'settings'
+                    ? 'bg-[#6C4CE1] text-white shadow-sm shadow-[#6C4CE1]/20'
+                    : 'text-slate-500 hover:bg-[#F2EFFF] hover:text-[#6C4CE1]'
+                }`}
+              >
+                <Settings className={`h-4 w-4 shrink-0 ${currentView === 'settings' ? 'text-white' : 'text-slate-400'}`} />
+                <span className="truncate">Settings</span>
+              </button>
+            </div>
           </div>
         </div>
 

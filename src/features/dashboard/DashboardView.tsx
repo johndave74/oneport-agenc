@@ -13,8 +13,10 @@ import {
   Plus,
   Clock,
   ChevronRight,
+  ChevronDown,
   CalendarCheck,
-  BarChart2
+  BarChart2,
+  FileText
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -43,6 +45,7 @@ import { computeCommandKpis } from './kpis';
 import { computeRuleFindings } from './aiRulesEngine';
 import OperationalAlerts from './AiOperationsAssistant';
 import TodaysPortCalls from './TodaysPortCalls';
+import PortCallsByStatus from './PortCallsByStatus';
 import OperationsChecklist from './OperationsChecklist';
 import IncidentCentre from './IncidentCentre';
 import OperationsStatusBar from './OperationsStatusBar';
@@ -136,20 +139,22 @@ export default function DashboardView({
   const criticalAlertsCount = findings.filter(f => f.severity === 'critical').length;
   const demurrageRiskCount = kpis.demurrageExceededCount + kpis.demurrageNearingCount;
 
-  const getRoleHeader = () => {
-    switch (userRole) {
-      case 'PORT_AGENT':
-        return { title: 'Port Operations Dashboard', subtitle: 'Coordinate pilots, berthing services, and port clearances.' };
-      case 'SHIP_AGENT':
-        return { title: 'Ship & Cargo Dispatch Console', subtitle: 'Monitor cargo load schedules, turnaround times, and disbursements.' };
-      case 'PROTECTIVE_AGENT':
-        return { title: 'Owner Protection & Compliance Center', subtitle: 'Audit disbursements, track operational delays, and mitigate logistics risks.' };
-      case 'ADMIN':
-      default:
-        return { title: 'Master Administration Panel', subtitle: 'Oversee multi-role users, audit action logs, and system-wide operations.' };
-    }
+  const [showMoreActions, setShowMoreActions] = useState(false);
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 18) return 'Good afternoon';
+    return 'Good evening';
   };
-  const currentRoleDashboard = getRoleHeader();
+  const firstName = userName.split(' ')[0];
+
+  const moreActions: { label: string; view: string }[] = [];
+  if (userRole === 'PORT_AGENT') moreActions.push({ label: 'Update Vessel ETA & ETD', view: 'vessels' });
+  if (userRole === 'SHIP_AGENT') moreActions.push({ label: 'View Laytime Ledger', view: 'laytime' });
+  if (userRole === 'ADMIN') moreActions.push({ label: 'Manage Users & Roles', view: 'admin' });
+  moreActions.push({ label: 'View Intelligence Reports', view: 'reports' });
+  moreActions.push({ label: 'Agency Settings', view: 'settings' });
 
   const kpiCards: KpiCard[] = useMemo(() => {
     switch (userRole) {
@@ -193,52 +198,72 @@ export default function DashboardView({
         pilotPending={kpis.pilotPendingCount}
         laytimeRunning={kpis.laytimeRunningCount}
         openIncidents={openIncidents.length}
+        setView={setView}
       />
 
       {/* Top Welcome Banner */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-6 text-slate-800 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center relative overflow-hidden">
-        <div className="absolute right-0 bottom-0 opacity-5 pointer-events-none transform translate-x-12 translate-y-6">
-          <Ship className="h-64 w-64 text-[#6C4CE1]" />
-        </div>
-        <div className="space-y-2 relative z-10">
-          <div className="flex items-center space-x-2 text-[#2D1B69] font-semibold font-mono text-xs tracking-wider uppercase">
-            <Sparkles className="h-4.5 w-4.5" />
-            <span>Welcome Back, {userName}</span>
-          </div>
-          <h3 className="text-3xl tracking-tight text-slate-900">{currentRoleDashboard.title}</h3>
-          <p className="text-sm text-slate-500 max-w-xl leading-relaxed">
-            {currentRoleDashboard.subtitle}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h3 className="text-2xl text-slate-900 flex items-center gap-2">
+            <span>{getGreeting()}, {firstName}</span>
+            <span aria-hidden>👋</span>
+          </h3>
+          <p className="text-sm text-slate-500 mt-1">
+            Here's what's happening with your operations today.
           </p>
         </div>
 
-        <div className="mt-4 md:mt-0 relative z-10 flex flex-wrap gap-2 md:gap-3 shrink-0">
-          {userRole === 'SHIP_AGENT' && (
-            <>
-              <button
-                onClick={() => setView('vessels')}
-                className="bg-[#6C4CE1] hover:bg-[#6C4CE1]/90 text-white text-xs font-semibold px-4.5 py-2.5 rounded-lg transition-all duration-150 shadow-md shadow-slate-900/10 flex items-center space-x-2 cursor-pointer"
-              >
-                <Plus className="h-4 w-4" />
-                <span>Register New Vessel</span>
-              </button>
-              <button
-                onClick={() => setView('expenses')}
-                className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-4.5 py-2.5 rounded-lg transition-all duration-150 shadow-md flex items-center space-x-2 cursor-pointer"
-              >
-                <Plus className="h-4 w-4" />
-                <span>Submit PDA Cost Estimate</span>
-              </button>
-            </>
-          )}
-          {userRole === 'PORT_AGENT' && (
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <button
+            onClick={() => setView('voyages')}
+            className="bg-[#6C4CE1] hover:bg-[#6C4CE1]/90 text-white text-xs font-semibold px-4 py-2.5 rounded-lg transition-colors shadow-sm flex items-center space-x-1.5 cursor-pointer"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            <span>New Port Call</span>
+          </button>
+          <button
+            onClick={() => setView('vessels')}
+            className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-semibold px-3.5 py-2.5 rounded-lg transition-colors flex items-center space-x-1.5 cursor-pointer"
+          >
+            <Ship className="h-3.5 w-3.5 text-slate-400" />
+            <span>Register Vessel</span>
+          </button>
+          <button
+            onClick={() => setView('documents')}
+            className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-semibold px-3.5 py-2.5 rounded-lg transition-colors flex items-center space-x-1.5 cursor-pointer"
+          >
+            <FileText className="h-3.5 w-3.5 text-slate-400" />
+            <span>Upload Document</span>
+          </button>
+          <button
+            onClick={() => setView('expenses')}
+            className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-semibold px-3.5 py-2.5 rounded-lg transition-colors flex items-center space-x-1.5 cursor-pointer"
+          >
+            <DollarSign className="h-3.5 w-3.5 text-slate-400" />
+            <span>Submit Expense</span>
+          </button>
+          <div className="relative">
             <button
-              onClick={() => setView('vessels')}
-              className="bg-[#6C4CE1] hover:bg-[#6C4CE1]/90 text-white text-xs font-semibold px-4.5 py-2.5 rounded-lg transition-all duration-150 shadow-md shadow-slate-900/10 flex items-center space-x-2 cursor-pointer"
+              onClick={() => setShowMoreActions(!showMoreActions)}
+              className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-semibold px-3.5 py-2.5 rounded-lg transition-colors flex items-center space-x-1.5 cursor-pointer"
             >
-              <Sliders className="h-4 w-4" />
-              <span>Update Vessel ETA & ETD</span>
+              <span>More Actions</span>
+              <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
             </button>
-          )}
+            {showMoreActions && (
+              <div className="absolute right-0 mt-2 w-56 bg-white border border-slate-200 rounded-xl shadow-xl z-20 overflow-hidden">
+                {moreActions.map((action) => (
+                  <button
+                    key={action.label}
+                    onClick={() => { setView(action.view); setShowMoreActions(false); }}
+                    className="w-full text-left px-3.5 py-2.5 text-xs text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer"
+                  >
+                    {action.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -249,22 +274,23 @@ export default function DashboardView({
           const isZeroOrEmpty = stat.val === 0 || stat.val === '0' || stat.val === '$0';
 
           return (
-            <div key={idx} className="bg-white border border-slate-150 rounded-xl p-5 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between h-32 relative overflow-hidden group">
-              <div className="flex items-start justify-between">
-                <div className="space-y-1">
-                  <span className="text-[10px] font-bold text-slate-400 font-mono tracking-wider uppercase">{stat.label}</span>
-                  <p className="text-3xl font-serif text-[#6C4CE1] mb-1">{stat.val}</p>
-                </div>
-                <div className={`p-2.5 rounded-lg shrink-0 ${stat.color} transition-transform group-hover:scale-105 duration-150`}>
-                  <Icon className="h-5 w-5" />
-                </div>
+            <div key={idx} className="bg-white border border-slate-150 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between h-36 relative overflow-hidden group">
+              <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${stat.color} transition-transform group-hover:scale-105 duration-150`}>
+                <Icon className="h-5 w-5" />
               </div>
 
-              <div className="flex items-center pt-3 border-t border-slate-50">
+              <div className="mt-3">
+                <p className="text-3xl font-serif text-[#6C4CE1] leading-none">{stat.val}</p>
+                <span className="text-xs text-slate-500 mt-1.5 block">{stat.label}</span>
+              </div>
+
+              <div className="pt-2.5">
                 {isZeroOrEmpty ? (
-                  <span className="text-[10px] text-slate-400 font-medium">No active data</span>
+                  <span className="inline-flex text-[10px] text-slate-400 font-medium">No active data</span>
                 ) : (
-                  <span className="text-[10px] text-slate-500 font-medium">{stat.footer}</span>
+                  <span className="inline-flex text-[10px] text-slate-500 font-medium bg-slate-50 px-2 py-0.5 rounded-full border border-slate-100">
+                    {stat.footer}
+                  </span>
                 )}
               </div>
             </div>
@@ -403,6 +429,8 @@ export default function DashboardView({
                   )}
                 </div>
               </div>
+
+              <PortCallsByStatus voyages={voyages} setView={setView} />
 
               <TodaysPortCalls voyages={voyages} vessels={vessels} users={users} setView={setView} />
 

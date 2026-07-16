@@ -18,6 +18,7 @@ interface HeaderProps {
   onToggleSidebar?: () => void;
   onLogout?: () => void;
   setView?: (view: string) => void;
+  onOpenCommandPalette?: () => void;
   opsSummary?: OpsSummary;
 }
 
@@ -38,6 +39,7 @@ export default function Header({
   onToggleSidebar,
   onLogout,
   setView,
+  onOpenCommandPalette,
   opsSummary
 }: HeaderProps) {
   const [showNotifMenu, setShowNotifMenu] = useState(false);
@@ -48,32 +50,37 @@ export default function Header({
   // Format titles nicely
   const titles: Record<string, string> = {
     dashboard: 'Operational Command Centre',
+    planning: 'Planning Centre',
     vessels: 'Vessel Registry & Status',
-    voyages: 'Voyage Logistics & Timelines',
+    voyages: 'Port Call Operations & Timelines',
     tasks: 'Daily Tasks & Port Coordination',
     documents: 'Document Clearance & Filing',
+    crm: 'Partner & Agent Directory',
     expenses: 'Disbursements & Expense Audits',
-    messages: 'Voyage Collaboration Room',
-    reports: 'Operational Intelligence & Port Reports',
-    notifications: 'Alert Center & System Logs',
+    laytime: 'Laytime & Demurrage Ledger',
+    messages: 'Port Call Communications',
+    reports: 'Reports & Analytics',
+    notifications: 'Notifications',
     settings: 'Agency Settings & Profile',
-    admin: 'System Settings & Audit Trail'
+    admin: 'Users, Roles & Audit Trail'
   };
 
-  // Map views to beautiful multi-level breadcrumbs
+  // Map views to multi-level breadcrumbs
   const breadcrumbs: Record<string, string[]> = {
-    dashboard: ['Oneport Agenc', 'Dashboard Center'],
-    vessels: ['Operations & Tracking', 'Vessel Registry'],
-    voyages: ['Operations & Tracking', 'Voyage Logistics'],
-    tasks: ['Work & Dispatch', 'Service Tasks'],
-    documents: ['Work & Dispatch', 'Digital Folders'],
-    expenses: ['Financial Control', 'Disbursement Accounts'],
-    laytime: ['Financial Control', 'Laytime Ledger'],
-    messages: ['Hub Channels', 'Live Radio & Chat'],
-    reports: ['Hub Channels', 'Intelligence Reports'],
-    notifications: ['Hub Channels', 'System Alerts'],
-    settings: ['Preferences', 'Global Settings'],
-    admin: ['Governance', 'System Governance']
+    dashboard: ['Oneport Agenc', 'Dashboard'],
+    planning: ['Operations', 'Planning Centre'],
+    vessels: ['Operations', 'Vessels'],
+    voyages: ['Operations', 'Port Calls'],
+    tasks: ['Operations', 'Tasks'],
+    documents: ['Documents & Partners', 'Documents'],
+    crm: ['Documents & Partners', 'Partners'],
+    expenses: ['Commercial', 'Disbursements'],
+    laytime: ['Maritime Operations', 'Laytime & Demurrage'],
+    messages: ['Documents & Partners', 'Communications'],
+    reports: ['Reports & Analytics', 'Reports & Analytics'],
+    notifications: ['Account', 'Notifications'],
+    settings: ['Account', 'Settings'],
+    admin: ['Administration', 'Users & Roles']
   };
 
   const currentPath = breadcrumbs[currentView] || ['Oneport Agenc', currentView];
@@ -123,18 +130,22 @@ export default function Header({
         </div>
       </div>
 
-      {/* Center Integrated Search (Non-functional elegant UI mockup like mockups) */}
+      {/* Command Palette trigger */}
       <div className="hidden md:flex items-center flex-1 max-w-2xl">
-        <div className="relative w-full">
+        <button
+          onClick={() => onOpenCommandPalette?.()}
+          className="relative w-full text-left cursor-pointer"
+        >
           <input
             type="text"
-            placeholder="Search port calls, vessels, voyages, invoices, documents..."
-            className="w-full bg-white border border-slate-200 rounded-lg pl-3 pr-14 py-2 text-xs text-slate-600 placeholder-slate-400 focus:outline-none focus:border-[#6C4CE1] transition-all font-sans"
+            readOnly
+            placeholder="Search port calls, vessels, tasks, documents, expenses..."
+            className="w-full bg-white border border-slate-200 rounded-lg pl-3 pr-14 py-2 text-xs text-slate-600 placeholder-slate-400 focus:outline-none focus:border-[#6C4CE1] transition-all font-sans cursor-pointer"
           />
           <span className="absolute right-2.5 top-2 text-[10px] font-sans font-semibold text-slate-400 bg-slate-100 border border-slate-200 px-1 rounded">
             Ctrl+K
           </span>
-        </div>
+        </button>
       </div>
 
       {/* Right Side Utility Panel */}

@@ -10,11 +10,19 @@ interface PlanningCenterViewProps {
   users: User[];
 }
 
+const TAB_LABELS: Record<'schedule' | 'berth' | 'services' | 'resources', string> = {
+  schedule: 'Timeline',
+  berth: 'Port Assignment',
+  services: 'Services',
+  resources: 'Resources'
+};
+
 export default function PlanningCenterView({ vessels, voyages, tasks, users }: PlanningCenterViewProps) {
   const [activeTab, setActiveTab] = useState<'schedule' | 'berth' | 'services' | 'resources'>('schedule');
 
   // Helper calculations
   const upcomingArrivals = voyages.filter(v => new Date(v.eta) >= new Date()).sort((a, b) => new Date(a.eta).getTime() - new Date(b.eta).getTime());
+  const destinationPorts = Array.from(new Set(upcomingArrivals.map(v => v.destinationPort).filter(Boolean)));
   
   // Conflict detection (simplified: two vessels at same berth/port arriving same day)
   const clashes = upcomingArrivals.reduce((acc: any[], v) => {
@@ -29,7 +37,7 @@ export default function PlanningCenterView({ vessels, voyages, tasks, users }: P
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-slate-800">Planning Center</h2>
+          <h2 className="text-2xl font-bold text-slate-800">Planning Centre</h2>
           <p className="text-slate-500">Operations Command & Control</p>
         </div>
         
@@ -57,7 +65,7 @@ export default function PlanningCenterView({ vessels, voyages, tasks, users }: P
             {tab === 'berth' && <Anchor className="inline-block w-4 h-4 mr-2 -mt-0.5" />}
             {tab === 'services' && <Ship className="inline-block w-4 h-4 mr-2 -mt-0.5" />}
             {tab === 'resources' && <Users className="inline-block w-4 h-4 mr-2 -mt-0.5" />}
-            {tab}
+            {TAB_LABELS[tab]}
           </button>
         ))}
       </div>
@@ -68,7 +76,7 @@ export default function PlanningCenterView({ vessels, voyages, tasks, users }: P
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
               <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center">
                 <Clock className="w-5 h-5 mr-2 text-[#6C4CE1]" />
-                Upcoming Schedule
+                Timeline
               </h3>
               <div className="space-y-4 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-200 before:to-transparent">
                 {upcomingArrivals.map((voyage, idx) => (
@@ -100,53 +108,54 @@ export default function PlanningCenterView({ vessels, voyages, tasks, users }: P
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm overflow-x-auto">
               <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center">
                 <Anchor className="w-5 h-5 mr-2 text-[#6C4CE1]" />
-                Berth Allocations
+                Port Assignment
               </h3>
-              <div className="min-w-[600px]">
-                 <div className="grid grid-cols-7 gap-2 mb-2 text-center text-xs font-bold text-slate-500">
-                    {/* Next 7 days */}
-                    {[...Array(7)].map((_, i) => {
-                      const d = new Date();
-                      d.setDate(d.getDate() + i);
-                      return <div key={i}>{d.toLocaleDateString([], {weekday: 'short', month: 'short', day: 'numeric'})}</div>
-                    })}
-                 </div>
-                 <div className="space-y-3">
-                   {['Berth 1', 'Berth 2', 'Berth 3', 'Anchorage'].map(berth => (
-                     <div key={berth} className="relative h-16 bg-slate-50 rounded-xl border border-slate-200 flex items-center">
-                        <div className="absolute left-0 w-24 h-full bg-white border-r border-slate-200 flex items-center justify-center font-bold text-slate-700 text-xs shadow-sm z-10 rounded-l-xl">
-                          {berth}
-                        </div>
-                        <div className="ml-24 w-full h-full relative p-2">
-                           {upcomingArrivals.map(voyage => {
-                              // Pseudo-random placement for demo based on voyage hash
-                              const isThisBerth = (voyage.vesselName.length % 4) === ['Berth 1', 'Berth 2', 'Berth 3', 'Anchorage'].indexOf(berth);
-                              if (!isThisBerth) return null;
-                              
-                              const vDate = new Date(voyage.eta);
-                              const today = new Date();
-                              const diffTime = Math.abs(vDate.getTime() - today.getTime());
-                              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                              
-                              if (diffDays >= 0 && diffDays < 7) {
+              {destinationPorts.length === 0 ? (
+                <div className="text-center py-10 text-slate-500 font-medium">No upcoming port calls to assign.</div>
+              ) : (
+                <div className="min-w-[600px]">
+                   <div className="grid grid-cols-7 gap-2 mb-2 text-center text-xs font-bold text-slate-500">
+                      {/* Next 7 days */}
+                      {[...Array(7)].map((_, i) => {
+                        const d = new Date();
+                        d.setDate(d.getDate() + i);
+                        return <div key={i}>{d.toLocaleDateString([], {weekday: 'short', month: 'short', day: 'numeric'})}</div>
+                      })}
+                   </div>
+                   <div className="space-y-3">
+                     {/* Grouped by real destination port — no fabricated berth assignment */}
+                     {destinationPorts.map(port => (
+                       <div key={port} className="relative h-16 bg-slate-50 rounded-xl border border-slate-200 flex items-center">
+                          <div className="absolute left-0 w-24 h-full bg-white border-r border-slate-200 flex items-center justify-center font-bold text-slate-700 text-xs shadow-sm z-10 rounded-l-xl px-1 text-center truncate">
+                            {port}
+                          </div>
+                          <div className="ml-24 w-full h-full relative p-2">
+                             {upcomingArrivals.filter(v => v.destinationPort === port).map(voyage => {
+                                const vDate = new Date(voyage.eta);
+                                const today = new Date();
+                                const diffDays = Math.ceil((vDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                                if (diffDays < 0 || diffDays >= 7) return null;
+
+                                const etdDate = new Date(voyage.etd);
+                                const spanDays = Math.min(7 - diffDays, Math.max(1, Math.ceil((etdDate.getTime() - vDate.getTime()) / (1000 * 60 * 60 * 24)) || 1));
+
                                 return (
-                                  <div 
+                                  <div
                                     key={voyage.id}
                                     className="absolute h-10 bg-[#6C4CE1] rounded-lg shadow text-white text-[10px] p-2 flex flex-col justify-center whitespace-nowrap overflow-hidden top-3"
-                                    style={{ left: `${(diffDays / 7) * 100}%`, width: `${(2 / 7) * 100}%` }}
+                                    style={{ left: `${(diffDays / 7) * 100}%`, width: `${(spanDays / 7) * 100}%` }}
                                   >
                                     <span className="font-bold truncate">{voyage.vesselName}</span>
                                     <span className="opacity-80 truncate">{voyage.cargoType}</span>
                                   </div>
-                                )
-                              }
-                              return null;
-                           })}
-                        </div>
-                     </div>
-                   ))}
-                 </div>
-              </div>
+                                );
+                             })}
+                          </div>
+                       </div>
+                     ))}
+                   </div>
+                </div>
+              )}
             </motion.div>
           )}
 
@@ -251,15 +260,6 @@ export default function PlanningCenterView({ vessels, voyages, tasks, users }: P
                  <p className="text-[10px] text-slate-500">No conflicts detected</p>
                </div>
              )}
-          </div>
-          
-          <div className="bg-[#6C4CE1] text-white rounded-2xl p-6 shadow-lg relative overflow-hidden">
-             <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-10 -mt-10 blur-2xl"></div>
-             <h4 className="font-bold mb-2">Port Call Sync</h4>
-             <p className="text-xs text-white/80 mb-4">Integrate with local port authority system to automatically update timelines.</p>
-             <button className="w-full bg-white text-[#6C4CE1] text-xs font-bold py-2 rounded-lg hover:bg-slate-50 transition-colors">
-               Sync Data
-             </button>
           </div>
         </div>
       </div>

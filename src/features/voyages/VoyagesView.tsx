@@ -19,6 +19,7 @@ interface VoyagesViewProps {
   voyages: Voyage[];
   vessels?: Vessel[];
   onAddVoyage: (voyage: Omit<Voyage, 'id'>) => void;
+  onAddVessel: (vessel: Omit<Vessel, 'id'>) => Promise<Vessel>;
   onUpdateCargoDetails: (id: string, updates: Partial<Voyage>) => void;
   onDeleteVoyage?: (id: string) => void;
   onToggleTimelineEvent: (voyageId: string, eventIndex: number) => void;
@@ -29,6 +30,7 @@ export default function VoyagesView({
   voyages,
   vessels = [],
   onAddVoyage,
+  onAddVessel,
   onUpdateCargoDetails,
   onDeleteVoyage,
   onToggleTimelineEvent,
@@ -36,6 +38,7 @@ export default function VoyagesView({
 }: VoyagesViewProps) {
   const [selectedVoyageId, setSelectedVoyageId] = useState<string>(voyages[0]?.id || '');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [isSubmittingVoyage, setIsSubmittingVoyage] = useState(false);
   const [editCargoMode, setEditCargoMode] = useState(false);
   const [editDetailsMode, setEditDetailsMode] = useState(false);
   const [voyageToDelete, setVoyageToDelete] = useState<{ id: string; label: string } | null>(null);
@@ -125,53 +128,85 @@ export default function VoyagesView({
     setEditDetailsMode(false);
   };
 
-  const handleAddSubmit = (e: React.FormEvent) => {
+  const handleAddSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!vesselName || !voyageNumber || !originPort || !destinationPort) return;
-    
-    const newVoy: Omit<Voyage, 'id'> = {
-      vesselId: vesselId || `ves-${Date.now()}`,
-      vesselName,
-      voyageNumber,
-      originPort,
-      destinationPort,
-      eta: eta || new Date().toISOString().substring(0, 16),
-      etd: etd || new Date().toISOString().substring(0, 16),
-      cargoType: cargoType || 'General Merchandise',
-      cargoQuantity: Number(cargoQuantity) || 5000,
-      cargoStatus: cargoStatus || 'Scheduled',
-      loadingSchedule: loadingSchedule || 'TBA',
-      unloadingSchedule: unloadingSchedule || 'TBA',
-      portAgentId: '11111111-1111-1111-1111-111111111111',
-      shipAgentId: '22222222-2222-2222-2222-222222222222',
-      protectiveAgentId: '33333333-3333-3333-3333-333333333333',
-      status: 'Scheduled',
-      timeline: [
-        { event: 'Departure from Origin', timestamp: eta, completed: false },
-        { event: 'Mid-voyage Status Check', timestamp: eta, completed: false },
-        { event: 'Pre-Arrival Documents Submitted', timestamp: eta, completed: false },
-        { event: 'Arrival at Pilot Station', timestamp: eta, completed: false },
-        { event: 'Vessel Berthing', timestamp: etd, completed: false },
-        { event: 'Cargo Operations Commencement', timestamp: etd, completed: false }
-      ]
-    };
 
-    onAddVoyage(newVoy);
-    
-    // Reset Form Fields
-    setVesselId('');
-    setVesselName('');
-    setIsCustomVessel(false);
-    setVoyageNumber('');
-    setOriginPort('');
-    setDestinationPort('');
-    setEta('');
-    setEtd('');
-    setCargoType('');
-    setCargoQuantity(10000);
-    setCargoStatus('Scheduled');
-    
-    setShowAddModal(false);
+    setIsSubmittingVoyage(true);
+    try {
+      // If the user chose "Register New Vessel" OR there were no registered
+      // vessels to pick from at all (in which case the dropdown never even
+      // renders, so isCustomVessel is never set), actually create a real
+      // vessel master record and use its real id — previously this
+      // fabricated a fake id (`ves-${Date.now()}`) that violated the
+      // voyages.vesselId -> vessels.id foreign key and made this path fail.
+      let resolvedVesselId = vesselId;
+      if (!resolvedVesselId) {
+        const newVessel = await onAddVessel({
+          vesselName,
+          imoNumber: 'N/A',
+          callSign: 'N/A',
+          flag: 'Unknown',
+          vesselType: 'Unspecified',
+          grossTonnage: 0,
+          deadweight: 0,
+          captainDetails: 'TBA',
+          crewCount: 0,
+          eta: eta || new Date().toISOString().substring(0, 16),
+          etd: etd || new Date().toISOString().substring(0, 16),
+          currentPort: originPort,
+          voyageNumber,
+          status: 'Scheduled'
+        });
+        resolvedVesselId = newVessel.id;
+      }
+
+      const newVoy: Omit<Voyage, 'id'> = {
+        vesselId: resolvedVesselId,
+        vesselName,
+        voyageNumber,
+        originPort,
+        destinationPort,
+        eta: eta || new Date().toISOString().substring(0, 16),
+        etd: etd || new Date().toISOString().substring(0, 16),
+        cargoType: cargoType || 'General Merchandise',
+        cargoQuantity: Number(cargoQuantity) || 5000,
+        cargoStatus: cargoStatus || 'Scheduled',
+        loadingSchedule: loadingSchedule || 'TBA',
+        unloadingSchedule: unloadingSchedule || 'TBA',
+        portAgentId: '11111111-1111-1111-1111-111111111111',
+        shipAgentId: '22222222-2222-2222-2222-222222222222',
+        protectiveAgentId: '33333333-3333-3333-3333-333333333333',
+        status: 'Scheduled',
+        timeline: [
+          { event: 'Departure from Origin', timestamp: eta, completed: false },
+          { event: 'Mid-voyage Status Check', timestamp: eta, completed: false },
+          { event: 'Pre-Arrival Documents Submitted', timestamp: eta, completed: false },
+          { event: 'Arrival at Pilot Station', timestamp: eta, completed: false },
+          { event: 'Vessel Berthing', timestamp: etd, completed: false },
+          { event: 'Cargo Operations Commencement', timestamp: etd, completed: false }
+        ]
+      };
+
+      onAddVoyage(newVoy);
+
+      // Reset Form Fields
+      setVesselId('');
+      setVesselName('');
+      setIsCustomVessel(false);
+      setVoyageNumber('');
+      setOriginPort('');
+      setDestinationPort('');
+      setEta('');
+      setEtd('');
+      setCargoType('');
+      setCargoQuantity(10000);
+      setCargoStatus('Scheduled');
+
+      setShowAddModal(false);
+    } finally {
+      setIsSubmittingVoyage(false);
+    }
   };
 
   const handleSaveCargoChanges = () => {
@@ -192,16 +227,16 @@ export default function VoyagesView({
         <div className="bg-white border border-slate-200 rounded-xl p-4 flex items-center justify-between">
           <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center space-x-2">
             <Compass className="h-4.5 w-4.5 text-[#6C4CE1]" />
-            <span>Active Voyages ({voyages.length})</span>
+            <span>Active Port Calls ({voyages.length})</span>
           </h3>
           {(userRole === 'PORT_AGENT' || userRole === 'SHIP_AGENT' || userRole === 'PROTECTIVE_AGENT' || userRole === 'ADMIN') && (
             <button
               onClick={() => setShowAddModal(true)}
               className="bg-[#6C4CE1] hover:bg-[#6C4CE1]/90 text-white p-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1 transition-colors cursor-pointer"
-              title="Add New Voyage log"
+              title="Register New Port Call"
             >
               <Plus className="h-4 w-4" />
-              <span className="hidden sm:inline">Add Voyage</span>
+              <span className="hidden sm:inline">New Port Call</span>
             </button>
           )}
         </div>
@@ -258,7 +293,7 @@ export default function VoyagesView({
                 <div>
                   <h4 className="text-lg font-bold text-slate-800 flex items-center space-x-2">
                     <Ship className="h-5 w-5 text-slate-400" />
-                    <span>Voyage Logistics: {selectedVoyage.vesselName}</span>
+                    <span>Port Call: {selectedVoyage.vesselName}</span>
                   </h4>
                   <p className="text-xs text-slate-500 font-mono">Assignees • Port Agent: James Vance • Ship Agent: Sara Tanaka</p>
                 </div>
@@ -271,7 +306,7 @@ export default function VoyagesView({
                     <button
                       onClick={() => setVoyageToDelete({ id: selectedVoyage.id, label: `${selectedVoyage.vesselName} (${selectedVoyage.voyageNumber})` })}
                       className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
-                      title="Delete Voyage Record"
+                      title="Delete Port Call Record"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
@@ -618,7 +653,7 @@ export default function VoyagesView({
           </div>
         ) : (
           <div className="bg-white border border-slate-200 p-12 text-center text-slate-400 rounded-xl">
-            No active voyage records selected. Select a voyage from the list on the left.
+            No active port call records selected. Select a port call from the list on the left.
           </div>
         )}
       </div>
@@ -630,7 +665,7 @@ export default function VoyagesView({
             <div className="p-5 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
               <h4 className="text-sm font-bold text-slate-800 flex items-center space-x-2">
                 <Compass className="h-5 w-5 text-[#6C4CE1]" />
-                <span>Assign & Create New Voyage Log</span>
+                <span>Register New Port Call</span>
               </h4>
               <button 
                 onClick={() => setShowAddModal(false)}
@@ -675,17 +710,17 @@ export default function VoyagesView({
                         {v.vesselName} (IMO: {v.imoNumber || 'N/A'}) - Owner: {v.captainDetails || 'Ship Owner'}
                       </option>
                     ))}
-                    <option value="custom">➕ Use Custom / Unlisted Vessel...</option>
+                    <option value="custom">➕ Register New Vessel...</option>
                   </select>
                 ) : (
                   <div className="p-2.5 bg-amber-50 border border-amber-200 text-amber-700 rounded-lg text-[11px] mb-1">
-                    No registered vessels found in the database. You can write a custom vessel name below, or ask the Ship Owner to register one.
+                    No registered vessels found yet. Enter a name below and it will be registered as a new vessel master record.
                   </div>
                 )}
 
                 {(isCustomVessel || !vessels || vessels.length === 0) && (
                   <div className="space-y-1">
-                    <label className="text-slate-400 text-[10px] uppercase font-bold block">Custom Vessel Name *</label>
+                    <label className="text-slate-400 text-[10px] uppercase font-bold block">New Vessel Name *</label>
                     <input
                       type="text"
                       required
@@ -803,9 +838,10 @@ export default function VoyagesView({
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-[#6C4CE1] hover:bg-[#6C4CE1]/90 text-white rounded-lg font-semibold shadow-md cursor-pointer"
+                  disabled={isSubmittingVoyage}
+                  className="px-5 py-2 bg-[#6C4CE1] hover:bg-[#6C4CE1]/90 disabled:opacity-60 text-white rounded-lg font-semibold shadow-md cursor-pointer"
                 >
-                  Confirm Assignment
+                  {isSubmittingVoyage ? 'Creating…' : 'Create Port Call'}
                 </button>
               </div>
             </form>
@@ -819,13 +855,13 @@ export default function VoyagesView({
           <div className="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden p-6 space-y-4">
             <h4 className="text-sm font-bold text-slate-800 flex items-center space-x-2">
               <Trash2 className="h-5 w-5 text-rose-600" />
-              <span>Delete Voyage Record</span>
+              <span>Delete Port Call Record</span>
             </h4>
             <p className="text-xs text-slate-500 leading-relaxed">
-              Are you sure you want to permanently delete the voyage record for <span className="font-bold text-slate-800">{voyageToDelete.label}</span>? This action cannot be undone.
+              Are you sure you want to permanently delete the port call record for <span className="font-bold text-slate-800">{voyageToDelete.label}</span>? This action cannot be undone.
             </p>
             <p className="text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-lg p-2.5 leading-relaxed">
-              This will also permanently delete every task, document, expense, message, incident, and laytime calculation linked to this voyage.
+              This will also permanently delete every task, document, expense, message, incident, and laytime calculation linked to this port call.
             </p>
             <div className="flex items-center justify-end space-x-2 pt-2">
               <button
