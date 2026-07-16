@@ -1,23 +1,28 @@
 import React from 'react';
 import Logo from '@/components/ui/Logo';
-import { 
-  Waves, 
-  LayoutDashboard, 
-  Ship, 
-  Compass, 
-  CheckSquare, 
-  FileText, 
-  DollarSign, 
-  MessageSquare, 
-  BarChart2, 
-  Bell, 
-  Settings, 
-  ShieldAlert, 
+import {
+  Waves,
+  LayoutDashboard,
+  Ship,
+  Compass,
+  CheckSquare,
+  FileText,
+  DollarSign,
+  MessageSquare,
+  BarChart2,
+  Bell,
+  Settings,
+  ShieldAlert,
   LogOut,
   UserCheck,
   Calculator,
   Users,
-  Calendar
+  Calendar,
+  Handshake,
+  Receipt,
+  FileStack,
+  Building2,
+  Activity
 } from 'lucide-react';
 import { UserRole, ROLE_ALLOWED_VIEWS } from '@/types';
 
@@ -56,12 +61,16 @@ export default function Sidebar({ currentView, setView, userRole, userName, onLo
         { id: 'voyages', label: 'Port Calls', icon: Compass },
         { id: 'vessels', label: 'Vessels', icon: Ship },
         { id: 'tasks', label: 'Tasks', icon: CheckSquare },
+        { id: 'crew', label: 'Crew Management', icon: Users },
       ]
     },
     {
       title: "Commercial",
       items: [
         { id: 'expenses', label: 'Disbursements (PDA · FDA)', icon: DollarSign },
+        { id: 'invoices', label: 'Invoices', icon: FileStack },
+        { id: 'tariffs', label: 'Tariffs', icon: Receipt },
+        { id: 'approvals', label: 'Approvals', icon: CheckSquare },
       ]
     },
     {
@@ -74,7 +83,8 @@ export default function Sidebar({ currentView, setView, userRole, userName, onLo
       title: "Documents & Partners",
       items: [
         { id: 'documents', label: 'Documents', icon: FileText },
-        { id: 'crm', label: 'Partners', icon: Users },
+        { id: 'crm', label: 'Agents', icon: UserCheck },
+        { id: 'partners', label: 'Partners', icon: Handshake },
         { id: 'messages', label: 'Communications', icon: MessageSquare },
       ]
     },
@@ -92,7 +102,10 @@ export default function Sidebar({ currentView, setView, userRole, userName, onLo
     items: group.items.filter(item => allowedViews.includes(item.id))
   })).filter(group => group.items.length > 0);
 
-  const adminItem = { id: 'admin', label: 'Users & Roles', icon: ShieldAlert };
+  const adminItems = [
+    { id: 'admin', label: 'Users & Roles', icon: ShieldAlert },
+    { id: 'auditlogs', label: 'Audit Logs', icon: Activity },
+  ];
 
   return (
     <>
@@ -180,17 +193,22 @@ export default function Sidebar({ currentView, setView, userRole, userName, onLo
               <span className="px-3 text-[9px] font-black uppercase text-slate-500 tracking-widest font-mono block">
                 Administration
               </span>
-              <button
-                onClick={() => handleItemClick(adminItem.id)}
-                className={`w-full flex items-center space-x-2.5 px-3 py-2 rounded-lg text-xs font-bold transition-all duration-150 text-left ${
-                  currentView === adminItem.id
-                    ? 'bg-[#6C4CE1] text-white shadow-sm shadow-[#6C4CE1]/20'
-                    : 'text-slate-500 hover:bg-[#F2EFFF] hover:text-[#6C4CE1]'
-                }`}
-              >
-                <adminItem.icon className={`h-4 w-4 shrink-0 ${currentView === adminItem.id ? 'text-white' : 'text-slate-400'}`} />
-                <span className="truncate">{adminItem.label}</span>
-              </button>
+              <div className="space-y-0.5">
+                {adminItems.map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => handleItemClick(item.id)}
+                    className={`w-full flex items-center space-x-2.5 px-3 py-2 rounded-lg text-xs font-bold transition-all duration-150 text-left ${
+                      currentView === item.id
+                        ? 'bg-[#6C4CE1] text-white shadow-sm shadow-[#6C4CE1]/20'
+                        : 'text-slate-500 hover:bg-[#F2EFFF] hover:text-[#6C4CE1]'
+                    }`}
+                  >
+                    <item.icon className={`h-4 w-4 shrink-0 ${currentView === item.id ? 'text-white' : 'text-slate-400'}`} />
+                    <span className="truncate">{item.label}</span>
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 
@@ -225,6 +243,19 @@ export default function Sidebar({ currentView, setView, userRole, userName, onLo
                 <Settings className={`h-4 w-4 shrink-0 ${currentView === 'settings' ? 'text-white' : 'text-slate-400'}`} />
                 <span className="truncate">Settings</span>
               </button>
+              {userRole === 'ADMIN' && (
+                <button
+                  onClick={() => handleItemClick('company')}
+                  className={`w-full flex items-center space-x-2.5 px-3 py-2 rounded-lg text-xs font-bold transition-all duration-150 text-left ${
+                    currentView === 'company'
+                      ? 'bg-[#6C4CE1] text-white shadow-sm shadow-[#6C4CE1]/20'
+                      : 'text-slate-500 hover:bg-[#F2EFFF] hover:text-[#6C4CE1]'
+                  }`}
+                >
+                  <Building2 className={`h-4 w-4 shrink-0 ${currentView === 'company' ? 'text-white' : 'text-slate-400'}`} />
+                  <span className="truncate">Company</span>
+                </button>
+              )}
             </div>
           </div>
         </div>

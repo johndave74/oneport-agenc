@@ -280,7 +280,7 @@ export default function DashboardView({
               </div>
 
               <div className="mt-3">
-                <p className="text-3xl font-serif text-[#6C4CE1] leading-none">{stat.val}</p>
+                <p className="text-4xl font-bold text-[#6C4CE1] leading-none tracking-tight">{stat.val}</p>
                 <span className="text-xs text-slate-500 mt-1.5 block">{stat.label}</span>
               </div>
 

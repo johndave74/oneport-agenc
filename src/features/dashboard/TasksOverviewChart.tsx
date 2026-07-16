@@ -47,7 +47,7 @@ export default function TasksOverviewChart({ tasks, setView }: TasksOverviewChar
               </PieChart>
             </ResponsiveContainer>
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-              <span className="text-xl font-serif font-bold text-slate-800">{tasks.length}</span>
+              <span className="text-xl font-bold text-slate-800">{tasks.length}</span>
               <span className="text-[9px] text-slate-400 uppercase tracking-wide">Total Tasks</span>
             </div>
           </div>

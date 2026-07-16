@@ -6,14 +6,50 @@ interface AdminViewProps {
   users: User[];
   auditLogs: AuditLog[];
   onUpdateUserRole: (userId: string, role: UserRole) => void;
+  initialTab?: 'users' | 'auditlogs';
 }
 
-export default function AdminView({ users, auditLogs, onUpdateUserRole }: AdminViewProps) {
+export default function AdminView({ users, auditLogs, onUpdateUserRole, initialTab = 'users' }: AdminViewProps) {
   const [showAddUserModal, setShowAddUserModal] = useState(false);
+
+  if (initialTab === 'auditlogs') {
+    return (
+      <div className="text-xs">
+        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm flex flex-col">
+          <div className="p-4 border-b border-slate-200 bg-slate-50/50 flex items-center space-x-2">
+            <Activity className="h-4.5 w-4.5 text-[#6C4CE1]" />
+            <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Security Audit Trails</h3>
+          </div>
+
+          <div className="divide-y divide-slate-100 max-h-[700px] overflow-y-auto p-2">
+            {auditLogs.length === 0 ? (
+              <div className="text-center py-10 text-slate-400 text-xs">No audit log entries recorded yet.</div>
+            ) : (
+              auditLogs.map((log) => (
+                <div key={log.id} className="p-3 hover:bg-slate-50/50 rounded-lg space-y-1.5 transition-colors">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-slate-800 block">{log.action}</span>
+                    <span className="text-[9px] text-slate-400 font-mono">{log.timestamp.replace('T', ' ')}</span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 leading-relaxed">
+                    "{log.details}"
+                  </p>
+                  <div className="flex items-center space-x-1.5 text-[9px] text-slate-400 font-mono font-medium">
+                    <UserCheck className="h-3 w-3 text-slate-300" />
+                    <span>Operator: {log.userName}</span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 text-xs">
-      
+
       {/* Col 1 & 2: User Role Permissions Management */}
       <div className="lg:col-span-2 space-y-6">
         

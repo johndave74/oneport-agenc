@@ -10,15 +10,16 @@ interface PlanningCenterViewProps {
   users: User[];
 }
 
-const TAB_LABELS: Record<'schedule' | 'berth' | 'services' | 'resources', string> = {
+const TAB_LABELS: Record<'schedule' | 'berth' | 'services' | 'resources' | 'calendar', string> = {
   schedule: 'Timeline',
   berth: 'Port Assignment',
   services: 'Services',
-  resources: 'Resources'
+  resources: 'Resources',
+  calendar: 'Calendar'
 };
 
 export default function PlanningCenterView({ vessels, voyages, tasks, users }: PlanningCenterViewProps) {
-  const [activeTab, setActiveTab] = useState<'schedule' | 'berth' | 'services' | 'resources'>('schedule');
+  const [activeTab, setActiveTab] = useState<'schedule' | 'berth' | 'services' | 'resources' | 'calendar'>('schedule');
 
   // Helper calculations
   const upcomingArrivals = voyages.filter(v => new Date(v.eta) >= new Date()).sort((a, b) => new Date(a.eta).getTime() - new Date(b.eta).getTime());
@@ -51,7 +52,7 @@ export default function PlanningCenterView({ vessels, voyages, tasks, users }: P
 
       {/* Tabs */}
       <div className="flex overflow-x-auto hide-scrollbar space-x-2 pb-2">
-        {(['schedule', 'berth', 'services', 'resources'] as const).map((tab) => (
+        {(['schedule', 'berth', 'services', 'resources', 'calendar'] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -65,6 +66,7 @@ export default function PlanningCenterView({ vessels, voyages, tasks, users }: P
             {tab === 'berth' && <Anchor className="inline-block w-4 h-4 mr-2 -mt-0.5" />}
             {tab === 'services' && <Ship className="inline-block w-4 h-4 mr-2 -mt-0.5" />}
             {tab === 'resources' && <Users className="inline-block w-4 h-4 mr-2 -mt-0.5" />}
+            {tab === 'calendar' && <Calendar className="inline-block w-4 h-4 mr-2 -mt-0.5" />}
             {TAB_LABELS[tab]}
           </button>
         ))}
@@ -230,6 +232,52 @@ export default function PlanningCenterView({ vessels, voyages, tasks, users }: P
                   </tbody>
                 </table>
               </div>
+            </motion.div>
+          )}
+
+          {activeTab === 'calendar' && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+              <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center">
+                <Calendar className="w-5 h-5 mr-2 text-[#6C4CE1]" />
+                Calendar
+              </h3>
+              {(() => {
+                type CalEntry = { date: string; label: string; kind: 'voyage' | 'task' };
+                const entries: CalEntry[] = [
+                  ...voyages.filter(v => v.eta).map(v => ({ date: v.eta, label: `${v.vesselName} arrives — ${v.voyageNumber}`, kind: 'voyage' as const })),
+                  ...tasks.filter(t => t.dueDate).map(t => ({ date: t.dueDate, label: `${t.title} (Voyage ${t.voyageNumber})`, kind: 'task' as const }))
+                ].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+                const groups = entries.reduce((acc: Record<string, CalEntry[]>, e) => {
+                  const day = new Date(e.date).toDateString();
+                  acc[day] = acc[day] || [];
+                  acc[day].push(e);
+                  return acc;
+                }, {});
+                const days = Object.keys(groups);
+
+                if (days.length === 0) {
+                  return <div className="text-center py-10 text-slate-500 font-medium">No scheduled voyages or tasks.</div>;
+                }
+
+                return (
+                  <div className="space-y-4">
+                    {days.map(day => (
+                      <div key={day} className="border border-slate-200 rounded-xl overflow-hidden">
+                        <div className="bg-slate-50 px-4 py-2 text-xs font-bold text-slate-700">{new Date(day).toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</div>
+                        <div className="divide-y divide-slate-100">
+                          {groups[day].map((e, idx) => (
+                            <div key={idx} className="px-4 py-2.5 flex items-center gap-2 text-xs">
+                              {e.kind === 'voyage' ? <Ship className="w-3.5 h-3.5 text-[#6C4CE1] shrink-0" /> : <Clock className="w-3.5 h-3.5 text-amber-500 shrink-0" />}
+                              <span className="text-slate-700">{e.label}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
             </motion.div>
           )}
         </div>

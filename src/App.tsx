@@ -16,6 +16,12 @@ import {
   UserRole,
   VesselStatus,
   TaskStatus,
+  Partner,
+  CrewMember,
+  Tariff,
+  Invoice,
+  InvoiceStatus,
+  Organization,
   ROLE_ALLOWED_VIEWS
 } from '@/types';
 import { computeCommandKpis } from '@/features/dashboard/kpis';
@@ -36,11 +42,17 @@ import MessagesView from '@/features/messages/MessagesView';
 import ReportsView from '@/features/reports/ReportsView';
 import NotificationsView from '@/features/notifications/NotificationsView';
 import SettingsView from '@/features/settings/SettingsView';
+import CompanySettingsView from '@/features/settings/CompanySettingsView';
 import AdminView from '@/features/admin/AdminView';
 import AuthView from '@/features/auth/AuthView';
 import LandingView from '@/features/auth/LandingView';
 import LaytimeCalculatorView from '@/features/laytime/LaytimeCalculatorView';
 import CrmView from '@/features/crm/CrmView';
+import CrewView from '@/features/crew/CrewView';
+import PartnersView from '@/features/partners/PartnersView';
+import TariffsView from '@/features/tariffs/TariffsView';
+import InvoicesView from '@/features/invoices/InvoicesView';
+import ApprovalsView from '@/features/approvals/ApprovalsView';
 
 export default function App() {
   const [authChecked, setAuthChecked] = useState(false);
@@ -63,7 +75,11 @@ export default function App() {
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [laytimeCalculations, setLaytimeCalculations] = useState<LaytimeCalculation[]>([]);
-  const [orgName, setOrgName] = useState('');
+  const [org, setOrgState] = useState<Organization>({ id: 'org-1', companyName: '' });
+  const [partners, setPartners] = useState<Partner[]>([]);
+  const [crewMembers, setCrewMembers] = useState<CrewMember[]>([]);
+  const [tariffs, setTariffs] = useState<Tariff[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
 
   const clearWorkspaceData = () => {
     setUsers([]);
@@ -77,18 +93,22 @@ export default function App() {
     setIncidents([]);
     setAuditLogs([]);
     setLaytimeCalculations([]);
-    setOrgName('');
+    setOrgState({ id: 'org-1', companyName: '' });
+    setPartners([]);
+    setCrewMembers([]);
+    setTariffs([]);
+    setInvoices([]);
   };
 
   const loadWorkspaceData = useCallback(async () => {
     const [
       usersData, vesselsData, voyagesData, tasksData, documentsData,
       expensesData, messagesData, notificationsData, incidentsData, auditLogsData,
-      laytimeCalculationsData, org
+      laytimeCalculationsData, orgData, partnersData, crewMembersData, tariffsData, invoicesData
     ] = await Promise.all([
       Db.getUsers(), Db.getVessels(), Db.getVoyages(), Db.getTasks(), Db.getDocuments(),
       Db.getExpenses(), Db.getMessages(), Db.getNotifications(), Db.getIncidents(), Db.getAuditLogs(),
-      Db.getLaytimeCalculations(), Db.getOrg()
+      Db.getLaytimeCalculations(), Db.getOrg(), Db.getPartners(), Db.getCrewMembers(), Db.getTariffs(), Db.getInvoices()
     ]);
     setUsers(usersData);
     setVessels(vesselsData);
@@ -101,7 +121,11 @@ export default function App() {
     setIncidents(incidentsData);
     setAuditLogs(auditLogsData);
     setLaytimeCalculations(laytimeCalculationsData);
-    setOrgName(org.companyName);
+    setOrgState(orgData);
+    setPartners(partnersData);
+    setCrewMembers(crewMembersData);
+    setTariffs(tariffsData);
+    setInvoices(invoicesData);
   }, []);
 
   // Restore session on load, and keep currentUser in sync with auth state.
@@ -311,10 +335,10 @@ export default function App() {
     setCurrentUser(updated);
   };
 
-  const handleUpdateOrg = async (companyName: string) => {
+  const handleUpdateOrg = async (updates: { companyName: string; address: string; licenseId: string }) => {
     if (!currentUser) return;
-    const org = await Db.setOrg({ id: 'org-1', companyName });
-    setOrgName(org.companyName);
+    const updated = await Db.setOrg({ id: 'org-1', ...updates });
+    setOrgState(updated);
   };
 
   const handleUpdateUserRole = async (userId: string, role: UserRole) => {
@@ -342,6 +366,78 @@ export default function App() {
     if (!currentUser) return;
     const log = await Db.addAuditLog(currentUser.id, currentUser.name, action, details);
     setAuditLogs(prev => [log, ...prev]);
+  };
+
+  const handleAddPartner = async (partner: Omit<Partner, 'id' | 'createdAt'>) => {
+    if (!currentUser) return;
+    const item = await Db.addPartner(partner);
+    setPartners(prev => [...prev, item]);
+  };
+
+  const handleEditPartner = async (partner: Partner) => {
+    if (!currentUser) return;
+    const updated = await Db.updatePartner(partner);
+    setPartners(prev => prev.map(p => p.id === updated.id ? updated : p));
+  };
+
+  const handleDeletePartner = async (id: string) => {
+    if (!currentUser) return;
+    await Db.deletePartner(id);
+    setPartners(prev => prev.filter(p => p.id !== id));
+  };
+
+  const handleAddCrewMember = async (crew: Omit<CrewMember, 'id'>) => {
+    if (!currentUser) return;
+    const item = await Db.addCrewMember(crew);
+    setCrewMembers(prev => [...prev, item]);
+  };
+
+  const handleEditCrewMember = async (crew: CrewMember) => {
+    if (!currentUser) return;
+    const updated = await Db.updateCrewMember(crew);
+    setCrewMembers(prev => prev.map(c => c.id === updated.id ? updated : c));
+  };
+
+  const handleDeleteCrewMember = async (id: string) => {
+    if (!currentUser) return;
+    await Db.deleteCrewMember(id);
+    setCrewMembers(prev => prev.filter(c => c.id !== id));
+  };
+
+  const handleAddTariff = async (tariff: Omit<Tariff, 'id'>) => {
+    if (!currentUser) return;
+    const item = await Db.addTariff(tariff);
+    setTariffs(prev => [...prev, item]);
+  };
+
+  const handleEditTariff = async (tariff: Tariff) => {
+    if (!currentUser) return;
+    const updated = await Db.updateTariff(tariff);
+    setTariffs(prev => prev.map(t => t.id === updated.id ? updated : t));
+  };
+
+  const handleDeleteTariff = async (id: string) => {
+    if (!currentUser) return;
+    await Db.deleteTariff(id);
+    setTariffs(prev => prev.filter(t => t.id !== id));
+  };
+
+  const handleAddInvoice = async (invoice: Omit<Invoice, 'id' | 'createdAt'>) => {
+    if (!currentUser) return;
+    const item = await Db.addInvoice(invoice);
+    setInvoices(prev => [...prev, item]);
+  };
+
+  const handleUpdateInvoiceStatus = async (id: string, status: InvoiceStatus) => {
+    if (!currentUser) return;
+    const updated = await Db.updateInvoiceStatus(id, status);
+    setInvoices(prev => prev.map(i => i.id === updated.id ? updated : i));
+  };
+
+  const handleDeleteInvoice = async (id: string) => {
+    if (!currentUser) return;
+    await Db.deleteInvoice(id);
+    setInvoices(prev => prev.filter(i => i.id !== id));
   };
 
   const renderMainView = () => {
@@ -379,11 +475,18 @@ export default function App() {
       case 'expenses': return <ExpensesView expenses={expenses} voyages={voyages} documents={documents} onUploadDocument={handleUploadDocument} onDeleteDocument={handleDeleteDocument} onAddExpense={handleAddExpense} onApproveExpense={handleApproveExpense} onRejectExpense={handleRejectExpense} userRole={currentUser.role} userName={currentUser.name} />;
       case 'messages': return <MessagesView messages={messages} voyages={voyages} onSendMessage={handleSendMessage} userRole={currentUser.role} userName={currentUser.name} />;
       case 'crm': return <CrmView users={users} vessels={vessels} currentUser={currentUser} onSendMessage={handleSendMessage} onUpdateVessel={handleEditVessel} onAddNotification={handleAddNotification} onAddAuditLog={handleAddAuditLog} />;
+      case 'crew': return <CrewView crewMembers={crewMembers} vessels={vessels} onAddCrewMember={handleAddCrewMember} onEditCrewMember={handleEditCrewMember} onDeleteCrewMember={handleDeleteCrewMember} />;
+      case 'partners': return <PartnersView partners={partners} onAddPartner={handleAddPartner} onEditPartner={handleEditPartner} onDeletePartner={handleDeletePartner} />;
+      case 'tariffs': return <TariffsView tariffs={tariffs} partners={partners} onAddTariff={handleAddTariff} onEditTariff={handleEditTariff} onDeleteTariff={handleDeleteTariff} />;
+      case 'invoices': return <InvoicesView invoices={invoices} voyages={voyages} partners={partners} onAddInvoice={handleAddInvoice} onUpdateInvoiceStatus={handleUpdateInvoiceStatus} onDeleteInvoice={handleDeleteInvoice} userName={currentUser.name} />;
+      case 'approvals': return <ApprovalsView expenses={expenses} incidents={incidents} onApproveExpense={handleApproveExpense} onRejectExpense={handleRejectExpense} userRole={currentUser.role} />;
       case 'reports': return <ReportsView vessels={vessels} voyages={voyages} incidents={incidents} expenses={expenses} />;
       case 'laytime': return <LaytimeCalculatorView currentUser={currentUser} />;
       case 'notifications': return <NotificationsView notifications={notifications} onMarkRead={handleMarkNotificationRead} onClearAll={handleMarkAllNotificationsRead} userRole={currentUser.role} />;
-      case 'settings': return <SettingsView userName={currentUser.name} userEmail={currentUser.email} userRole={currentUser.role} org={{ id: 'org-1', companyName: orgName }} onUpdateProfile={handleUpdateProfile} onUpdateOrg={handleUpdateOrg} />;
-      case 'admin': return <AdminView users={users} auditLogs={auditLogs} onUpdateUserRole={handleUpdateUserRole} />;
+      case 'settings': return <SettingsView userName={currentUser.name} userEmail={currentUser.email} userRole={currentUser.role} onUpdateProfile={handleUpdateProfile} />;
+      case 'company': return <CompanySettingsView userRole={currentUser.role} org={org} onUpdateOrg={handleUpdateOrg} />;
+      case 'admin': return <AdminView users={users} auditLogs={auditLogs} onUpdateUserRole={handleUpdateUserRole} initialTab="users" />;
+      case 'auditlogs': return <AdminView users={users} auditLogs={auditLogs} onUpdateUserRole={handleUpdateUserRole} initialTab="auditlogs" />;
       default: return <div className="p-8 text-center text-slate-500 text-xs">Operational module "{currentView}" under system maintenance.</div>;
     }
   };
@@ -407,7 +510,7 @@ export default function App() {
     <div className="flex bg-[#F4F7F9] min-h-screen text-slate-800 antialiased font-sans relative">
       <Sidebar currentView={currentView} setView={setView} userRole={currentUser.role} userName={currentUser.name} onLogout={handleLogout} isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
       <div className="flex-1 flex flex-col min-w-0">
-        <Header currentView={currentView} userRole={currentUser.role} userName={currentUser.name} notifications={notifications} onMarkAllRead={handleMarkAllNotificationsRead} orgName={orgName} onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} onLogout={handleLogout} setView={setView} onOpenCommandPalette={() => setIsCommandPaletteOpen(true)} opsSummary={opsSummary} />
+        <Header currentView={currentView} userRole={currentUser.role} userName={currentUser.name} notifications={notifications} onMarkAllRead={handleMarkAllNotificationsRead} orgName={org.companyName} onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} onLogout={handleLogout} setView={setView} onOpenCommandPalette={() => setIsCommandPaletteOpen(true)} opsSummary={opsSummary} />
         <main className="flex-1 overflow-y-auto p-4 md:p-8">
           {renderMainView()}
         </main>

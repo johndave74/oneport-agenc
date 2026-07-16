@@ -54,15 +54,22 @@ export default function Header({
     vessels: 'Vessel Registry & Status',
     voyages: 'Port Call Operations & Timelines',
     tasks: 'Daily Tasks & Port Coordination',
+    crew: 'Crew Management',
     documents: 'Document Clearance & Filing',
-    crm: 'Partner & Agent Directory',
+    crm: 'Agent Directory',
+    partners: 'Partner Directory',
     expenses: 'Disbursements & Expense Audits',
+    invoices: 'Invoices',
+    tariffs: 'Tariffs & Rate Card',
+    approvals: 'Approvals Inbox',
     laytime: 'Laytime & Demurrage Ledger',
     messages: 'Port Call Communications',
     reports: 'Reports & Analytics',
     notifications: 'Notifications',
     settings: 'Agency Settings & Profile',
-    admin: 'Users, Roles & Audit Trail'
+    company: 'Company Details',
+    admin: 'Users, Roles & Audit Trail',
+    auditlogs: 'Security Audit Trail'
   };
 
   // Map views to multi-level breadcrumbs
@@ -72,15 +79,22 @@ export default function Header({
     vessels: ['Operations', 'Vessels'],
     voyages: ['Operations', 'Port Calls'],
     tasks: ['Operations', 'Tasks'],
+    crew: ['Operations', 'Crew Management'],
     documents: ['Documents & Partners', 'Documents'],
-    crm: ['Documents & Partners', 'Partners'],
+    crm: ['Documents & Partners', 'Agents'],
+    partners: ['Documents & Partners', 'Partners'],
     expenses: ['Commercial', 'Disbursements'],
+    invoices: ['Commercial', 'Invoices'],
+    tariffs: ['Commercial', 'Tariffs'],
+    approvals: ['Commercial', 'Approvals'],
     laytime: ['Maritime Operations', 'Laytime & Demurrage'],
     messages: ['Documents & Partners', 'Communications'],
     reports: ['Reports & Analytics', 'Reports & Analytics'],
     notifications: ['Account', 'Notifications'],
     settings: ['Account', 'Settings'],
-    admin: ['Administration', 'Users & Roles']
+    company: ['Account', 'Company'],
+    admin: ['Administration', 'Users & Roles'],
+    auditlogs: ['Administration', 'Audit Logs']
   };
 
   const currentPath = breadcrumbs[currentView] || ['Oneport Agenc', currentView];

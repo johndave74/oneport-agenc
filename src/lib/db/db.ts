@@ -15,6 +15,10 @@ import {
   AuditLog,
   Organization,
   LaytimeCalculation,
+  Partner,
+  CrewMember,
+  Tariff,
+  Invoice,
 } from '@/types';
 
 function unwrap<T>({ data, error }: { data: T | null; error: { message: string } | null }): T {
@@ -258,6 +262,94 @@ export const Db = {
 
   async deleteLaytimeCalculation(id: string): Promise<void> {
     const { error } = await supabase.from('laytime_calculations').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+  },
+
+  // ----------------------------------------------------------- Partners
+  async getPartners(): Promise<Partner[]> {
+    const res = await supabase.from('partners').select('*');
+    return unwrap(res as any);
+  },
+
+  async addPartner(partner: Omit<Partner, 'id' | 'createdAt'>): Promise<Partner> {
+    const item: Partner = { id: `ptn-${Date.now()}`, ...partner, createdAt: new Date().toISOString() };
+    const res = await supabase.from('partners').insert(item).select().single();
+    return unwrap(res as any);
+  },
+
+  async updatePartner(partner: Partner): Promise<Partner> {
+    const res = await supabase.from('partners').update(partner).eq('id', partner.id).select().single();
+    return unwrap(res as any);
+  },
+
+  async deletePartner(id: string): Promise<void> {
+    const { error } = await supabase.from('partners').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+  },
+
+  // ------------------------------------------------------- Crew members
+  async getCrewMembers(): Promise<CrewMember[]> {
+    const res = await supabase.from('crew_members').select('*');
+    return unwrap(res as any);
+  },
+
+  async addCrewMember(crew: Omit<CrewMember, 'id'>): Promise<CrewMember> {
+    const item: CrewMember = { id: `crw-${Date.now()}`, ...crew };
+    const res = await supabase.from('crew_members').insert(item).select().single();
+    return unwrap(res as any);
+  },
+
+  async updateCrewMember(crew: CrewMember): Promise<CrewMember> {
+    const res = await supabase.from('crew_members').update(crew).eq('id', crew.id).select().single();
+    return unwrap(res as any);
+  },
+
+  async deleteCrewMember(id: string): Promise<void> {
+    const { error } = await supabase.from('crew_members').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+  },
+
+  // ----------------------------------------------------------- Tariffs
+  async getTariffs(): Promise<Tariff[]> {
+    const res = await supabase.from('tariffs').select('*');
+    return unwrap(res as any);
+  },
+
+  async addTariff(tariff: Omit<Tariff, 'id'>): Promise<Tariff> {
+    const item: Tariff = { id: `tar-${Date.now()}`, ...tariff };
+    const res = await supabase.from('tariffs').insert(item).select().single();
+    return unwrap(res as any);
+  },
+
+  async updateTariff(tariff: Tariff): Promise<Tariff> {
+    const res = await supabase.from('tariffs').update(tariff).eq('id', tariff.id).select().single();
+    return unwrap(res as any);
+  },
+
+  async deleteTariff(id: string): Promise<void> {
+    const { error } = await supabase.from('tariffs').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+  },
+
+  // ----------------------------------------------------------- Invoices
+  async getInvoices(): Promise<Invoice[]> {
+    const res = await supabase.from('invoices').select('*');
+    return unwrap(res as any);
+  },
+
+  async addInvoice(invoice: Omit<Invoice, 'id' | 'createdAt'>): Promise<Invoice> {
+    const item: Invoice = { id: `inv-${Date.now()}`, ...invoice, createdAt: new Date().toISOString() };
+    const res = await supabase.from('invoices').insert(item).select().single();
+    return unwrap(res as any);
+  },
+
+  async updateInvoiceStatus(id: string, status: Invoice['status']): Promise<Invoice> {
+    const res = await supabase.from('invoices').update({ status }).eq('id', id).select().single();
+    return unwrap(res as any);
+  },
+
+  async deleteInvoice(id: string): Promise<void> {
+    const { error } = await supabase.from('invoices').delete().eq('id', id);
     if (error) throw new Error(error.message);
   },
 };

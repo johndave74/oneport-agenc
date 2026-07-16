@@ -17,6 +17,8 @@ export interface User {
 export interface Organization {
   id: string;
   companyName: string;
+  address?: string;
+  licenseId?: string;
 }
 
 export type VesselStatus = 'Scheduled' | 'Arriving' | 'Berthed' | 'Cargo Operations' | 'Departing' | 'Completed';
@@ -175,10 +177,73 @@ export interface LaytimeCalculation {
   updatedAt: string;
 }
 
+export type PartnerType = 'Principal' | 'Vendor' | 'Port Authority' | 'Terminal' | 'Client';
+
+export interface Partner {
+  id: string;
+  name: string;
+  type: PartnerType;
+  contactName?: string;
+  email?: string;
+  phone?: string;
+  portsCovered?: string[];
+  notes?: string;
+  createdAt: string;
+}
+
+export interface CrewMember {
+  id: string;
+  vesselId?: string;
+  vesselName?: string;
+  fullName: string;
+  rank: string;
+  nationality?: string;
+  seamanBookNumber?: string;
+  passportNumber?: string;
+  signOnDate?: string;
+  signOffDate?: string;
+  status: 'Onboard' | 'Signed Off' | 'Scheduled';
+  contactPhone?: string;
+  notes?: string;
+}
+
+export interface Tariff {
+  id: string;
+  serviceCategory: string;
+  description?: string;
+  port?: string;
+  vendorId?: string;
+  vendorName?: string;
+  rate: number;
+  currency: string;
+  unit: string;
+  effectiveDate: string;
+  notes?: string;
+}
+
+export type InvoiceStatus = 'Draft' | 'Sent' | 'Paid' | 'Overdue' | 'Cancelled';
+
+export interface Invoice {
+  id: string;
+  invoiceNumber: string;
+  voyageId: string;
+  voyageNumber: string;
+  partnerId?: string;
+  partnerName?: string;
+  amount: number;
+  currency: string;
+  status: InvoiceStatus;
+  issueDate: string;
+  dueDate: string;
+  notes?: string;
+  createdBy: string;
+  createdAt: string;
+}
+
 export const ROLE_ALLOWED_VIEWS: Record<UserRole, string[]> = {
-  PORT_AGENT: ['dashboard', 'planning', 'vessels', 'voyages', 'tasks', 'documents', 'expenses', 'crm', 'messages', 'reports', 'notifications', 'settings'],
-  SHIP_AGENT: ['dashboard', 'planning', 'vessels', 'voyages', 'documents', 'expenses', 'laytime', 'crm', 'messages', 'reports', 'notifications', 'settings'],
-  PROTECTIVE_AGENT: ['dashboard', 'planning', 'vessels', 'voyages', 'tasks', 'documents', 'expenses', 'crm', 'messages', 'reports', 'notifications', 'settings'],
-  ADMIN: ['dashboard', 'planning', 'vessels', 'voyages', 'tasks', 'documents', 'expenses', 'laytime', 'crm', 'messages', 'reports', 'notifications', 'settings', 'admin']
+  PORT_AGENT: ['dashboard', 'planning', 'vessels', 'voyages', 'tasks', 'crew', 'documents', 'expenses', 'invoices', 'tariffs', 'approvals', 'crm', 'partners', 'messages', 'reports', 'notifications', 'settings'],
+  SHIP_AGENT: ['dashboard', 'planning', 'vessels', 'voyages', 'crew', 'documents', 'expenses', 'invoices', 'tariffs', 'approvals', 'laytime', 'crm', 'partners', 'messages', 'reports', 'notifications', 'settings'],
+  PROTECTIVE_AGENT: ['dashboard', 'planning', 'vessels', 'voyages', 'tasks', 'crew', 'documents', 'expenses', 'invoices', 'tariffs', 'approvals', 'crm', 'partners', 'messages', 'reports', 'notifications', 'settings'],
+  ADMIN: ['dashboard', 'planning', 'vessels', 'voyages', 'tasks', 'crew', 'documents', 'expenses', 'invoices', 'tariffs', 'approvals', 'laytime', 'crm', 'partners', 'messages', 'reports', 'notifications', 'settings', 'company', 'admin', 'auditlogs']
 };
 
