@@ -61,7 +61,7 @@ export default function NotificationsView({
                     <p className={`text-xs text-slate-700 leading-relaxed ${isUnread ? 'font-medium text-slate-900' : ''}`}>
                       {notif.message}
                     </p>
-                    <span className="text-[10px] text-slate-400 font-mono block">
+                    <span className="text-[10px] text-slate-400 tabular-nums block">
                       Issued: {notif.createdAt.replace('T', ' ')}
                     </span>
                   </div>

@@ -118,8 +118,8 @@ export default function TariffsView({ tariffs, partners, onAddTariff, onEditTari
                     </td>
                     <td className="py-4 px-4 text-slate-600">{t.vendorName || <span className="text-slate-400">—</span>}</td>
                     <td className="py-4 px-4 text-slate-600">{t.port || '—'}</td>
-                    <td className="py-4 px-4 font-mono font-bold text-slate-800">{t.currency} {t.rate.toLocaleString()} <span className="text-[10px] text-slate-400 font-normal">/ {t.unit}</span></td>
-                    <td className="py-4 px-4 font-mono text-[10px] text-slate-500">{t.effectiveDate}</td>
+                    <td className="py-4 px-4 tabular-nums font-bold text-slate-800">{t.currency} {t.rate.toLocaleString()} <span className="text-[10px] text-slate-400 font-normal">/ {t.unit}</span></td>
+                    <td className="py-4 px-4 tabular-nums text-[10px] text-slate-500">{t.effectiveDate}</td>
                     <td className="py-4 px-5 text-right">
                       <div className="flex items-center justify-end space-x-2">
                         <button onClick={() => openEditModal(t)} className="p-1.5 text-slate-400 hover:text-[#2D1B69] hover:bg-slate-100 rounded-lg transition-colors cursor-pointer" title="Edit Tariff">

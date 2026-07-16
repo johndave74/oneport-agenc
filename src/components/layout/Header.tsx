@@ -69,7 +69,8 @@ export default function Header({
     settings: 'Agency Settings & Profile',
     company: 'Company Details',
     admin: 'Users, Roles & Audit Trail',
-    auditlogs: 'Security Audit Trail'
+    auditlogs: 'Security Audit Trail',
+    organizations: 'Organizations'
   };
 
   // Map views to multi-level breadcrumbs
@@ -94,7 +95,8 @@ export default function Header({
     settings: ['Account', 'Settings'],
     company: ['Account', 'Company'],
     admin: ['Administration', 'Users & Roles'],
-    auditlogs: ['Administration', 'Audit Logs']
+    auditlogs: ['Administration', 'Audit Logs'],
+    organizations: ['Platform', 'Organizations']
   };
 
   const currentPath = breadcrumbs[currentView] || ['Oneport Agenc', currentView];

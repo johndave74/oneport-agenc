@@ -193,7 +193,7 @@ export default function DocumentsView({
 
         {/* Directory Guidelines Card */}
         <div className="bg-white border border-slate-200 p-4.5 rounded-xl text-xs space-y-3.5 shadow-sm text-slate-700">
-          <h5 className="font-bold text-[#6C4CE1] uppercase tracking-wider text-[10px] font-mono flex items-center space-x-1.5">
+          <h5 className="font-bold text-[#6C4CE1] uppercase tracking-wider text-[10px] tabular-nums flex items-center space-x-1.5">
             <ShieldCheck className="h-4 w-4 text-[#6C4CE1]" />
             <span>Customs & Security Rules</span>
           </h5>
@@ -201,7 +201,7 @@ export default function DocumentsView({
             In accordance with ISPS maritime regulations, all arrival declarations, cargo manifests, and crew declarations must be cleared 24 hours prior to berthing.
           </p>
           <hr className="border-slate-100" />
-          <div className="text-[10px] text-slate-500 font-mono space-y-1">
+          <div className="text-[10px] text-slate-500 tabular-nums space-y-1">
             <div>• Manifests: Required (Port Agent)</div>
             <div>• Crew List: Required (Ship Agent)</div>
             <div>• Port Clearance: Required (Southampton Port)</div>
@@ -224,7 +224,7 @@ export default function DocumentsView({
               className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-[#6C4CE1] focus:outline-none bg-white"
             />
           </div>
-          <span className="text-xs font-mono text-slate-400">Total: {filteredDocs.length} files</span>
+          <span className="text-xs tabular-nums text-slate-400">Total: {filteredDocs.length} files</span>
         </div>
 
         {/* Document Table */}
@@ -263,25 +263,25 @@ export default function DocumentsView({
                             <span className="font-bold text-slate-800 block hover:underline cursor-pointer" onClick={() => setSelectedDoc(doc)}>
                               {doc.fileName}
                             </span>
-                            <span className="text-[10px] text-slate-400 font-mono">{doc.fileSize} • {doc.category}</span>
+                            <span className="text-[10px] text-slate-400 tabular-nums">{doc.fileSize} • {doc.category}</span>
                           </div>
                         </div>
                       </td>
-                      <td className="py-3.5 px-4 font-mono text-[11px] text-slate-500">
+                      <td className="py-3.5 px-4 tabular-nums text-[11px] text-slate-500">
                         {doc.type}
                       </td>
                       <td className="py-3.5 px-4">
-                        <span className="px-1.5 py-0.5 rounded font-mono text-[10px] bg-[#6C4CE1]/10 text-[#2D1B69] font-semibold border border-[#6C4CE1]/20">
+                        <span className="px-1.5 py-0.5 rounded tabular-nums text-[10px] bg-[#6C4CE1]/10 text-[#2D1B69] font-semibold border border-[#6C4CE1]/20">
                           {doc.voyageNumber}
                         </span>
                       </td>
                       <td className="py-3.5 px-4">
-                        <div className="flex items-center space-x-1 font-mono text-[10px] text-slate-500">
+                        <div className="flex items-center space-x-1 tabular-nums text-[10px] text-slate-500">
                           <History className="h-3.5 w-3.5 text-slate-300" />
                           <span>v{doc.version}.0 (Active)</span>
                         </div>
                       </td>
-                      <td className="py-3.5 px-4 font-mono text-[10px] text-slate-500">
+                      <td className="py-3.5 px-4 tabular-nums text-[10px] text-slate-500">
                         <div>Upload: {doc.uploadedBy}</div>
                         <div className="text-[9px] text-slate-400">{doc.uploadedAt.replace('T', ' ')}</div>
                       </td>
@@ -340,7 +340,7 @@ export default function DocumentsView({
               </button>
             </div>
             
-            <div className="p-6 bg-slate-50 font-mono text-xs space-y-4 border-b border-slate-100 leading-relaxed text-slate-700">
+            <div className="p-6 bg-slate-50 tabular-nums text-xs space-y-4 border-b border-slate-100 leading-relaxed text-slate-700">
               <div className="border border-slate-200/80 rounded bg-white p-4 space-y-2.5 shadow-inner">
                 <p className="font-bold border-b pb-1 text-slate-900 uppercase">OFFICIAL PORT DISPATCH CLEARANCE</p>
                 <p>FILE_NAME: <span className="font-semibold text-slate-800">{selectedDoc.fileName}</span></p>
@@ -418,7 +418,7 @@ export default function DocumentsView({
                 <span className="font-semibold text-slate-700 block">
                   {fileName ? `Selected: ${fileName}` : 'Drag & drop cargo manifest or click to choose'}
                 </span>
-                <span className="text-[10px] text-slate-400 block mt-1 font-mono">Supports PDF, XLSX, CSV up to 10MB</span>
+                <span className="text-[10px] text-slate-400 block mt-1 tabular-nums">Supports PDF, XLSX, CSV up to 10MB</span>
               </div>
 
               {fileName && (
@@ -429,7 +429,7 @@ export default function DocumentsView({
                     required
                     value={fileName}
                     onChange={(e) => setFileName(e.target.value)}
-                    className="w-full border border-slate-200 rounded-lg p-2 focus:ring-1 focus:ring-[#6C4CE1] font-mono bg-white text-xs"
+                    className="w-full border border-slate-200 rounded-lg p-2 focus:ring-1 focus:ring-[#6C4CE1] tabular-nums bg-white text-xs"
                   />
                 </div>
               )}

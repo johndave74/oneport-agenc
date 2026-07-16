@@ -39,14 +39,46 @@ export const Db = {
     return unwrap(res as any);
   },
 
+  async getOrganizations(): Promise<Organization[]> {
+    const res = await supabase.from('organizations').select('*').order('createdAt', { ascending: true });
+    return unwrap(res as any);
+  },
+
+  async addOrganization(input: { companyName: string; address?: string; licenseId?: string }): Promise<Organization> {
+    const slug = input.companyName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    const item = {
+      id: `org-${Date.now()}`,
+      companyName: input.companyName,
+      address: input.address || null,
+      licenseId: input.licenseId || null,
+      slug,
+      status: 'active',
+    };
+    const res = await supabase.from('organizations').insert(item).select().single();
+    return unwrap(res as any);
+  },
+
+  async updateOrganization(id: string, updates: { companyName?: string; address?: string; licenseId?: string; status?: string }): Promise<Organization> {
+    const res = await supabase.from('organizations').update(updates).eq('id', id).select().single();
+    return unwrap(res as any);
+  },
+
+  async deleteOrganization(id: string): Promise<void> {
+    const { error } = await supabase.from('organizations').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+  },
+
   // -------------------------------------------------------------- Users
   async getUsers(): Promise<User[]> {
     const res = await supabase.from('users').select('*');
     return unwrap(res as any);
   },
 
-  async updateUserRole(userId: string, role: UserRole): Promise<User> {
-    const res = await supabase.from('users').update({ role }).eq('id', userId).select().single();
+  async updateUserRole(userId: string, role: string): Promise<User> {
+    // Keep the legacy role text and the RBAC roleId in sync. System role ids are
+    // deterministic: PORT_AGENT -> 'role-port-agent', etc. (see the migration seed).
+    const roleId = `role-${role.toLowerCase().replace(/_/g, '-')}`;
+    const res = await supabase.from('users').update({ role, roleId }).eq('id', userId).select().single();
     return unwrap(res as any);
   },
 

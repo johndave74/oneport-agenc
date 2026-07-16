@@ -71,7 +71,7 @@ export default function MessagesView({
               <MessageSquare className="h-4.5 w-4.5 text-[#6C4CE1]" />
               <span>Logistics Channels</span>
             </h4>
-            <span className="bg-[#6C4CE1]/10 text-[#6C4CE1] text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full border border-[#6C4CE1]/20">
+            <span className="bg-[#6C4CE1]/10 text-[#6C4CE1] text-[10px] tabular-nums font-bold px-1.5 py-0.5 rounded-full border border-[#6C4CE1]/20">
               {channels.length}
             </span>
           </div>
@@ -126,7 +126,7 @@ export default function MessagesView({
               {channels.find(c => c.id === activeChannelId)?.desc}
             </p>
           </div>
-          <div className="flex items-center space-x-1 text-slate-400 text-xs font-mono">
+          <div className="flex items-center space-x-1 text-slate-400 text-xs tabular-nums">
             <Users className="h-4 w-4 text-slate-300" />
             <span className="text-[10px]">All Port Crew Active</span>
           </div>
@@ -135,7 +135,7 @@ export default function MessagesView({
         {/* Message Feeds */}
         <div className="flex-1 overflow-y-auto p-5 space-y-4">
           
-          <div className="text-center py-4 text-[11px] text-slate-400 font-mono border-b border-dashed border-slate-200">
+          <div className="text-center py-4 text-[11px] text-slate-400 tabular-nums border-b border-dashed border-slate-200">
             ⚓ BEGINNING OF SECURE MARITIME CHAT ENCRYPTED DATASTREAM
           </div>
 
@@ -160,10 +160,10 @@ export default function MessagesView({
                   {/* metadata bubble info */}
                   <div className="flex items-center space-x-2 text-[10px] text-slate-400">
                     <span className="font-bold text-slate-700">{msg.senderName}</span>
-                    <span className={`px-1 rounded-sm text-[8px] font-bold font-mono uppercase ${roleColors[msg.senderRole]}`}>
+                    <span className={`px-1 rounded-sm text-[8px] font-bold tabular-nums uppercase ${roleColors[msg.senderRole]}`}>
                       {msg.senderRole.replace('_', ' ')}
                     </span>
-                    <span className="font-mono text-[9px]">{msg.timestamp.split('T')[1] || msg.timestamp}</span>
+                    <span className="tabular-nums text-[9px]">{msg.timestamp.split('T')[1] || msg.timestamp}</span>
                   </div>
 
                   {/* message body */}

@@ -108,11 +108,11 @@ export default function InvoicesView({ invoices, voyages, partners, onAddInvoice
               <tbody className="divide-y divide-slate-100 text-xs">
                 {filtered.map((i) => (
                   <tr key={i.id} className="hover:bg-slate-50/50 transition-colors">
-                    <td className="py-4 px-5 font-mono font-bold text-slate-800">{i.invoiceNumber}</td>
+                    <td className="py-4 px-5 tabular-nums font-bold text-slate-800">{i.invoiceNumber}</td>
                     <td className="py-4 px-4 text-slate-600">{i.voyageNumber}</td>
                     <td className="py-4 px-4 text-slate-600">{i.partnerName || <span className="text-slate-400">—</span>}</td>
-                    <td className="py-4 px-4 font-mono font-bold text-slate-800">{i.currency} {i.amount.toLocaleString()}</td>
-                    <td className="py-4 px-4 font-mono text-[10px] text-slate-500">{i.dueDate}</td>
+                    <td className="py-4 px-4 tabular-nums font-bold text-slate-800">{i.currency} {i.amount.toLocaleString()}</td>
+                    <td className="py-4 px-4 tabular-nums text-[10px] text-slate-500">{i.dueDate}</td>
                     <td className="py-4 px-4 text-center">
                       <select
                         value={i.status}

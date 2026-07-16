@@ -34,7 +34,7 @@ export default function ApprovalsView({ expenses, incidents, onApproveExpense, o
                     <span className="font-bold text-slate-800 block">{e.category}</span>
                     <span className="text-[10px] text-slate-400">Voyage {e.voyageNumber} · Submitted by {e.submittedBy}</span>
                   </div>
-                  <span className="font-mono font-bold text-slate-800 shrink-0">${e.amount.toLocaleString()}</span>
+                  <span className="tabular-nums font-bold text-slate-800 shrink-0">${e.amount.toLocaleString()}</span>
                 </div>
                 <p className="text-[11px] text-slate-500 mb-2">{e.description}</p>
                 {canAct ? (
@@ -47,7 +47,7 @@ export default function ApprovalsView({ expenses, incidents, onApproveExpense, o
                     </button>
                   </div>
                 ) : (
-                  <span className="text-[10px] text-slate-400 font-mono italic">Awaiting Protective Agent / Admin review</span>
+                  <span className="text-[10px] text-slate-400 tabular-nums italic">Awaiting Protective Agent / Admin review</span>
                 )}
               </div>
             ))}
@@ -77,7 +77,7 @@ export default function ApprovalsView({ expenses, incidents, onApproveExpense, o
                   </span>
                 </div>
                 <p className="text-[11px] text-slate-500 mb-1">{i.description}</p>
-                <span className="text-[10px] text-slate-400 font-mono">Reported by {i.reportedBy} · {i.status}</span>
+                <span className="text-[10px] text-slate-400 tabular-nums">Reported by {i.reportedBy} · {i.status}</span>
               </div>
             ))}
           </div>

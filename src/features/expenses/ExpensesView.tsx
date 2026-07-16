@@ -311,18 +311,18 @@ export default function ExpensesView({
                           <span className="text-[10px] text-slate-400 leading-normal block max-w-sm">{exp.description}</span>
                         </div>
                       </td>
-                      <td className="py-3.5 px-4 font-mono text-xs">
-                        <span className="px-1.5 py-0.5 rounded font-mono text-[10px] bg-[#6C4CE1]/10 text-[#2D1B69] font-semibold border border-[#6C4CE1]/20">
+                      <td className="py-3.5 px-4 tabular-nums text-xs">
+                        <span className="px-1.5 py-0.5 rounded tabular-nums text-[10px] bg-[#6C4CE1]/10 text-[#2D1B69] font-semibold border border-[#6C4CE1]/20">
                           {exp.voyageNumber}
                         </span>
                       </td>
-                      <td className="py-3.5 px-4 text-right font-mono font-medium text-slate-600">
+                      <td className="py-3.5 px-4 text-right tabular-nums font-medium text-slate-600">
                         ${exp.estimatedAmount.toLocaleString()}
                       </td>
-                      <td className="py-3.5 px-4 text-right font-mono font-bold text-slate-900">
+                      <td className="py-3.5 px-4 text-right tabular-nums font-bold text-slate-900">
                         ${exp.amount.toLocaleString()}
                       </td>
-                      <td className="py-3.5 px-4 text-right font-mono">
+                      <td className="py-3.5 px-4 text-right tabular-nums">
                         {overrunVal === 0 ? (
                           <span className="text-slate-400">0%</span>
                         ) : overrunVal > 0 ? (
@@ -372,7 +372,7 @@ export default function ExpensesView({
                             </button>
                           </div>
                         ) : (
-                          <span className="text-[10px] text-slate-400 font-mono italic">
+                          <span className="text-[10px] text-slate-400 tabular-nums italic">
                             {exp.status === 'Approved' ? `Approved by David M.` : 
                              exp.status === 'Rejected' ? 'Charge Rejected' : 'Read-only / Estimated'}
                           </span>
@@ -528,11 +528,11 @@ export default function ExpensesView({
                               <span className="font-bold text-slate-800 block truncate max-w-[180px]" title={doc.fileName}>
                                 {doc.fileName}
                               </span>
-                              <span className="text-[9px] text-slate-400 font-mono block">v{doc.version}.0 • {doc.fileSize}</span>
+                              <span className="text-[9px] text-slate-400 tabular-nums block">v{doc.version}.0 • {doc.fileSize}</span>
                             </div>
                           </div>
                         </td>
-                        <td className="py-2.5 px-3 font-mono text-[10px]">
+                        <td className="py-2.5 px-3 tabular-nums text-[10px]">
                           <span className="px-1.5 py-0.5 rounded bg-[#6C4CE1]/10 text-[#2D1B69] font-semibold">
                             {doc.voyageNumber}
                           </span>
@@ -655,7 +655,7 @@ export default function ExpensesView({
                     required
                     value={estAmount}
                     onChange={(e) => setEstAmount(Number(e.target.value))}
-                    className="w-full border border-slate-200 rounded-lg p-2 focus:ring-1 focus:ring-[#6C4CE1] focus:outline-none font-mono bg-white"
+                    className="w-full border border-slate-200 rounded-lg p-2 focus:ring-1 focus:ring-[#6C4CE1] focus:outline-none tabular-nums bg-white"
                   />
                 </div>
                 <div className="space-y-1">
@@ -665,7 +665,7 @@ export default function ExpensesView({
                     required
                     value={amount}
                     onChange={(e) => setAmount(Number(e.target.value))}
-                    className="w-full border border-slate-200 rounded-lg p-2 focus:ring-1 focus:ring-[#6C4CE1] focus:outline-none font-mono bg-white"
+                    className="w-full border border-slate-200 rounded-lg p-2 focus:ring-1 focus:ring-[#6C4CE1] focus:outline-none tabular-nums bg-white"
                   />
                 </div>
               </div>

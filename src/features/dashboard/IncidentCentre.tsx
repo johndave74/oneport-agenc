@@ -66,7 +66,7 @@ export default function IncidentCentre({ incidents, voyages, demurrageRiskCount,
           <AlertTriangle className="h-4.5 w-4.5 text-rose-600" />
           <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Incident Centre</h4>
         </div>
-        <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold border ${RISK_BADGE_STYLES[risk.label]}`}>
+        <span className={`px-2 py-0.5 rounded-full text-[10px] tabular-nums font-bold border ${RISK_BADGE_STYLES[risk.label]}`}>
           Risk: {risk.label}
         </span>
       </div>
@@ -82,26 +82,26 @@ export default function IncidentCentre({ incidents, voyages, demurrageRiskCount,
         <div className="space-y-4">
           {openIncidents.length > 0 && (
             <div className="space-y-3">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono">Open Incidents ({openIncidents.length})</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 tabular-nums">Open Incidents ({openIncidents.length})</span>
               {openIncidents.map(inc => (
                 <div key={inc.id} className="border-l-2 border-rose-500 pl-3 py-1.5 space-y-1">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-slate-800">{inc.voyageNumber}</span>
-                    <span className={`text-[9px] font-mono font-bold px-1 rounded uppercase ${
+                    <span className={`text-[9px] tabular-nums font-bold px-1 rounded uppercase ${
                       inc.severity === 'Critical' || inc.severity === 'High' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700'
                     }`}>
                       {inc.severity}
                     </span>
                   </div>
                   <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">{inc.description}</p>
-                  <span className="text-[9px] text-slate-400 block font-mono">Reported by {inc.reportedBy}</span>
+                  <span className="text-[9px] text-slate-400 block tabular-nums">Reported by {inc.reportedBy}</span>
                 </div>
               ))}
             </div>
           )}
 
           <div className="space-y-2">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono">Recent Delays</span>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 tabular-nums">Recent Delays</span>
             {delays.length === 0 ? (
               <p className="text-[11px] text-slate-400 leading-relaxed">
                 No delay variance recorded yet. Delays appear once actual arrival/departure times are logged against scheduled ETA/ETD.
@@ -110,7 +110,7 @@ export default function IncidentCentre({ incidents, voyages, demurrageRiskCount,
               delays.map(d => (
                 <div key={d.voyage.id} className="flex items-center justify-between text-xs">
                   <span className="text-slate-700 font-semibold truncate max-w-[140px]">{d.voyage.vesselName}</span>
-                  <span className="text-[10px] font-mono text-rose-600 font-bold">
+                  <span className="text-[10px] tabular-nums text-rose-600 font-bold">
                     {d.etaDelayHrs && d.etaDelayHrs > 1 ? `+${d.etaDelayHrs.toFixed(1)}h ETA` : `+${(d.etdDelayHrs ?? 0).toFixed(1)}h ETD`}
                   </span>
                 </div>

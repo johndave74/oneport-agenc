@@ -1,48 +1,114 @@
 import React from 'react';
-import { Anchor, Ship, UserCheck, Clock, AlertTriangle, ChevronRight } from 'lucide-react';
+import {
+  Anchor,
+  Ship,
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  UserCheck,
+  Clock,
+  AlertTriangle,
+  CloudSun,
+  Activity,
+  LucideIcon,
+} from 'lucide-react';
+import { MaritimeWeather } from './weather';
+import { OperationalHealth } from './commandData';
+
+type Tone = 'ok' | 'info' | 'warn' | 'alert' | 'neutral';
+
+interface StatusMetric {
+  icon: LucideIcon;
+  label: string;
+  value: string | number;
+  tone: Tone;
+  tooltip: string;
+  view: string;
+}
 
 interface OperationsStatusBarProps {
   activePortCalls: number;
   shipsAtBerth: number;
-  pilotPending: number;
+  arrivalsToday: number;
+  departuresToday: number;
+  pilotRequests: number;
   laytimeRunning: number;
   openIncidents: number;
+  weather: MaritimeWeather;
+  health: OperationalHealth;
   setView: (view: string) => void;
 }
 
-export default function OperationsStatusBar({ activePortCalls, shipsAtBerth, pilotPending, laytimeRunning, openIncidents, setView }: OperationsStatusBarProps) {
-  const items = [
-    { icon: Anchor, label: 'Active Port Calls', value: activePortCalls, color: 'text-sky-500' },
-    { icon: Ship, label: 'Ships at Berth', value: shipsAtBerth, color: 'text-[#6C4CE1]' },
-    { icon: UserCheck, label: 'Pilot Pending', value: pilotPending, color: 'text-amber-500' },
-    { icon: Clock, label: 'Laytime Running', value: laytimeRunning, color: 'text-[#6C4CE1]' },
-    { icon: AlertTriangle, label: 'Open Incidents', value: openIncidents, color: 'text-rose-500' },
+const TONE_TEXT: Record<Tone, string> = {
+  ok: 'text-emerald-600',
+  info: 'text-sky-600',
+  warn: 'text-amber-600',
+  alert: 'text-rose-600',
+  neutral: 'text-slate-500',
+};
+
+const WEATHER_TONE: Record<MaritimeWeather['severity'], Tone> = {
+  good: 'ok',
+  watch: 'warn',
+  alert: 'alert',
+};
+
+export default function OperationsStatusBar({
+  activePortCalls,
+  shipsAtBerth,
+  arrivalsToday,
+  departuresToday,
+  pilotRequests,
+  laytimeRunning,
+  openIncidents,
+  weather,
+  health,
+  setView,
+}: OperationsStatusBarProps) {
+  const globalTone: Tone = health.label === 'Critical' ? 'alert' : health.label === 'Warning' ? 'warn' : 'ok';
+
+  const metrics: StatusMetric[] = [
+    { icon: Anchor, label: 'Active Port Calls', value: activePortCalls, tone: 'info', tooltip: 'Voyages currently in progress (not completed).', view: 'voyages' },
+    { icon: Ship, label: 'Ships at Berth', value: shipsAtBerth, tone: 'info', tooltip: 'Vessels berthed or in cargo operations.', view: 'vessels' },
+    { icon: ArrowDownToLine, label: 'Arrivals Today', value: arrivalsToday, tone: arrivalsToday ? 'ok' : 'neutral', tooltip: 'Vessels scheduled to arrive today with no actual ETA logged yet.', view: 'voyages' },
+    { icon: ArrowUpFromLine, label: 'Departures Today', value: departuresToday, tone: departuresToday ? 'ok' : 'neutral', tooltip: 'Vessels scheduled to depart today with no actual ETD logged yet.', view: 'voyages' },
+    { icon: UserCheck, label: 'Pilot Requests', value: pilotRequests, tone: pilotRequests ? 'warn' : 'neutral', tooltip: 'Active port calls awaiting a pilot boarding milestone.', view: 'planning' },
+    { icon: Clock, label: 'Laytime Running', value: laytimeRunning, tone: laytimeRunning ? 'info' : 'neutral', tooltip: 'Laytime calculations in draft or sent for approval.', view: 'laytime' },
+    { icon: AlertTriangle, label: 'Open Incidents', value: openIncidents, tone: openIncidents ? 'alert' : 'ok', tooltip: 'Incidents not yet resolved.', view: 'approvals' },
+    { icon: CloudSun, label: weather.seaState, value: `${weather.windKts}kt`, tone: WEATHER_TONE[weather.severity], tooltip: `${weather.port}: ${weather.summary}. Wind ${weather.windKts}kt ${weather.windDir}, swell ${weather.swellM}m, vis ${weather.visibilityKm}km.`, view: 'planning' },
+    { icon: Activity, label: 'System Health', value: `${health.score}%`, tone: globalTone, tooltip: health.reasons.length ? health.reasons.join(' · ') : 'All operational checks within threshold.', view: 'reports' },
   ];
 
   return (
-    <div className="bg-white border border-slate-200 rounded-xl px-5 py-3 shadow-sm flex flex-wrap items-center gap-x-8 gap-y-2">
-      <div className="flex items-center space-x-2 pr-6 border-r border-slate-100">
-        <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-        <span className="text-xs font-bold text-slate-700">Operations Status</span>
-        <span className="text-[10px] font-mono text-emerald-600 font-bold uppercase">Live</span>
+    <div className="bg-white border border-slate-200 rounded-xl shadow-sm flex items-stretch overflow-hidden">
+      <div className="flex items-center gap-2.5 px-4 py-3 border-r border-slate-100 shrink-0 bg-slate-50/60">
+        <span className={`h-2.5 w-2.5 rounded-full ${globalTone === 'alert' ? 'bg-rose-500' : globalTone === 'warn' ? 'bg-amber-500' : 'bg-emerald-500'} animate-pulse`} />
+        <div className="leading-tight">
+          <span className="text-xs font-bold text-slate-700 block">Operations Status</span>
+          <span className={`text-[9px] tabular-nums font-bold uppercase tracking-wider ${TONE_TEXT[globalTone]}`}>
+            {globalTone === 'ok' ? 'All Systems Normal' : globalTone === 'warn' ? 'Attention Needed' : 'Action Required'}
+          </span>
+        </div>
       </div>
-      {items.map((item) => {
-        const Icon = item.icon;
-        return (
-          <div key={item.label} className="flex items-center space-x-2">
-            <Icon className={`h-4 w-4 ${item.color}`} />
-            <span className="text-xs text-slate-500">{item.label}</span>
-            <span className="text-sm font-bold text-slate-800">{item.value}</span>
-          </div>
-        );
-      })}
-      <button
-        onClick={() => setView('voyages')}
-        className="ml-auto flex items-center space-x-0.5 text-xs font-semibold text-[#6C4CE1] hover:text-[#6C4CE1]/80 cursor-pointer shrink-0"
-      >
-        <span>View All Status</span>
-        <ChevronRight className="h-3.5 w-3.5" />
-      </button>
+
+      <div className="flex items-stretch overflow-x-auto flex-1 divide-x divide-slate-100">
+        {metrics.map((m) => {
+          const Icon = m.icon;
+          return (
+            <button
+              key={m.label}
+              onClick={() => setView(m.view)}
+              title={m.tooltip}
+              className="group flex items-center gap-2.5 px-4 py-3 hover:bg-slate-50 transition-colors shrink-0 cursor-pointer text-left"
+            >
+              <Icon className={`h-4 w-4 shrink-0 ${TONE_TEXT[m.tone]}`} />
+              <div className="leading-tight">
+                <span className="text-sm font-bold text-slate-800 block tabular-nums group-hover:text-[#6C4CE1] transition-colors">{m.value}</span>
+                <span className="text-[10px] text-slate-400 font-medium whitespace-nowrap">{m.label}</span>
+              </div>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

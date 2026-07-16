@@ -248,19 +248,19 @@ export default function VesselsView({
                   <tr key={v.id} className="hover:bg-slate-50/50 transition-colors">
                     <td className="py-4 px-5">
                       <div className="flex items-center space-x-3">
-                        <div className="h-9 w-9 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-600 font-bold font-mono shrink-0">
+                        <div className="h-9 w-9 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-600 font-bold tabular-nums shrink-0">
                           <Ship className="h-5 w-5 text-slate-500" />
                         </div>
                         <div>
                           <span className="font-bold text-slate-800 text-sm block">{v.vesselName}</span>
                           <div className="flex flex-wrap gap-1 mt-1 items-center">
-                            <span className="text-[10px] text-slate-500 bg-slate-100 rounded px-1.5 py-0.5 inline-block font-mono font-semibold">
+                            <span className="text-[10px] text-slate-500 bg-slate-100 rounded px-1.5 py-0.5 inline-block tabular-nums font-semibold">
                               {v.vesselType}
                             </span>
                             {v.assignedPortAgentName ? (
                               <span className="text-[10px] text-[#6C4CE1] bg-[#6C4CE1]/10 border border-[#6C4CE1]/20 rounded-sm px-1.5 py-0.5 inline-flex items-center font-bold" title={`Attached Port Agent: ${v.assignedPortAgentName}`}>
                                 <span className="h-1 w-1 bg-[#6C4CE1] rounded-full mr-1 shrink-0"></span>
-                                <span className="font-mono">
+                                <span className="tabular-nums">
                                   Agent: {v.assignedPortAgentName}
                                   {(() => {
                                     const matched = users.find(u => u.id === v.assignedPortAgentId || u.name === v.assignedPortAgentName);
@@ -269,7 +269,7 @@ export default function VesselsView({
                                 </span>
                               </span>
                             ) : (
-                              <span className="text-[9px] text-amber-700 bg-amber-50 border border-amber-200/60 rounded-sm px-1.5 py-0.5 inline-flex items-center font-semibold font-mono">
+                              <span className="text-[9px] text-amber-700 bg-amber-50 border border-amber-200/60 rounded-sm px-1.5 py-0.5 inline-flex items-center font-semibold tabular-nums">
                                 <span>⚠️ No Agent Attached</span>
                               </span>
                             )}
@@ -277,20 +277,20 @@ export default function VesselsView({
                         </div>
                       </div>
                     </td>
-                    <td className="py-4 px-4 font-mono">
+                    <td className="py-4 px-4 tabular-nums">
                       <div className="text-slate-700">IMO: <span className="font-bold">{v.imoNumber}</span></div>
                       <div className="text-slate-400 text-[10px]">Callsign: {v.callSign}</div>
                       <div className="text-slate-400 text-[10px]">Flag: {v.flag}</div>
                     </td>
-                    <td className="py-4 px-4 font-mono text-[10px] text-slate-500 space-y-0.5">
+                    <td className="py-4 px-4 tabular-nums text-[10px] text-slate-500 space-y-0.5">
                       <div>GT: {v.grossTonnage.toLocaleString()} tons</div>
                       <div>DWT: {v.deadweight.toLocaleString()} tons</div>
                     </td>
                     <td className="py-4 px-4">
                       <div className="font-semibold text-slate-700">{v.captainDetails}</div>
-                      <div className="text-slate-400 text-[10px] font-mono">{v.crewCount} Crew Members</div>
+                      <div className="text-slate-400 text-[10px] tabular-nums">{v.crewCount} Crew Members</div>
                     </td>
-                    <td className="py-4 px-4 font-mono text-[10px] text-slate-600 space-y-0.5">
+                    <td className="py-4 px-4 tabular-nums text-[10px] text-slate-600 space-y-0.5">
                       <div className="text-slate-500">Port: <span className="font-semibold text-slate-800">{v.currentPort}</span></div>
                       <div>Voyage: <span className="font-bold text-[#2D1B69]">{v.voyageNumber}</span></div>
                       <div className="text-emerald-700 font-semibold">ETA: {v.eta.replace('T', ' ')}</div>
@@ -342,7 +342,7 @@ export default function VesselsView({
                           </button>
                         </div>
                       ) : (
-                        <span className="text-slate-400 font-mono text-[10px]">Read-only</span>
+                        <span className="text-slate-400 tabular-nums text-[10px]">Read-only</span>
                       )}
                     </td>
                   </tr>
@@ -531,7 +531,7 @@ export default function VesselsView({
                         >
                           <div className="flex justify-between items-center font-bold">
                             <span className="truncate">{agent.name}</span>
-                            <span className="text-amber-500 font-mono text-[10px] shrink-0">★{agent.rating}</span>
+                            <span className="text-amber-500 tabular-nums text-[10px] shrink-0">★{agent.rating}</span>
                           </div>
                           <p className="text-[9px] text-slate-400 font-medium truncate leading-none mt-0.5">{agent.specialty}</p>
                         </button>
@@ -775,7 +775,7 @@ export default function VesselsView({
                         >
                           <div className="flex justify-between items-center font-bold">
                             <span className="truncate">{agent.name}</span>
-                            <span className="text-amber-500 font-mono text-[10px] shrink-0">★{agent.rating}</span>
+                            <span className="text-amber-500 tabular-nums text-[10px] shrink-0">★{agent.rating}</span>
                           </div>
                           <p className="text-[9px] text-slate-400 font-medium truncate leading-none mt-0.5">{agent.specialty}</p>
                         </button>

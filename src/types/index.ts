@@ -12,6 +12,9 @@ export interface User {
   phone?: string;
   locations?: string[];
   status?: 'Available' | 'Busy' | 'On Voyage';
+  roleId?: string | null;
+  isPlatformAdmin?: boolean;
+  accountStatus?: string;
 }
 
 export interface Organization {
@@ -19,6 +22,57 @@ export interface Organization {
   companyName: string;
   address?: string;
   licenseId?: string;
+  slug?: string;
+  status?: string;
+  createdAt?: string;
+}
+
+// ---- Phase 2: RBAC + multi-tenant (additive; not yet wired into runtime) ----
+
+export type RoleKey =
+  | 'PLATFORM_SUPER_ADMIN'
+  | 'ORG_ADMIN'
+  | 'OPERATIONS_MANAGER'
+  | 'PORT_AGENT'
+  | 'SHIP_AGENT'
+  | 'PROTECTIVE_AGENT'
+  | 'FINANCE'
+  | 'DOCUMENTATION'
+  | 'VIEWER';
+
+export type PermissionAction = 'view' | 'create' | 'edit' | 'delete' | 'approve' | 'manage';
+
+export interface Role {
+  id: string;
+  key: RoleKey | string;
+  name: string;
+  description?: string;
+  isSystem: boolean;
+  organizationId?: string | null;
+  createdAt?: string;
+}
+
+export interface Permission {
+  id: string; // '<module>:<action>'
+  module: string;
+  action: PermissionAction;
+  description?: string;
+}
+
+export type InvitationStatus = 'pending' | 'accepted' | 'revoked' | 'expired';
+
+export interface Invitation {
+  id: string;
+  email: string;
+  organizationId: string;
+  roleId?: string | null;
+  invitedBy?: string | null;
+  invitedByName?: string;
+  token: string;
+  status: InvitationStatus;
+  expiresAt?: string;
+  acceptedAt?: string | null;
+  createdAt?: string;
 }
 
 export type VesselStatus = 'Scheduled' | 'Arriving' | 'Berthed' | 'Cargo Operations' | 'Departing' | 'Completed';

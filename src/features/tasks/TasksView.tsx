@@ -190,10 +190,10 @@ export default function TasksView({ tasks, voyages, onAddTask, onUpdateTaskStatu
               >
                 <div className="space-y-2.5">
                   <div className="flex items-start justify-between w-full">
-                    <span className={`px-2 py-0.5 rounded text-[9px] font-mono font-bold border ${roleBadgeStyles[task.assignedTo as UserRole] || 'bg-slate-50'}`}>
+                    <span className={`px-2 py-0.5 rounded text-[9px] tabular-nums font-bold border ${roleBadgeStyles[task.assignedTo as UserRole] || 'bg-slate-50'}`}>
                       {task.assignedTo.replace('_', ' ')}
                     </span>
-                    <span className={`px-2 py-0.5 rounded text-[9px] font-mono font-bold border ${statusStyles[task.status]}`}>
+                    <span className={`px-2 py-0.5 rounded text-[9px] tabular-nums font-bold border ${statusStyles[task.status]}`}>
                       {task.status}
                     </span>
                   </div>
@@ -205,7 +205,7 @@ export default function TasksView({ tasks, voyages, onAddTask, onUpdateTaskStatu
                 </div>
 
                 <div className="space-y-3 pt-3 border-t border-slate-100/80">
-                  <div className="flex items-center justify-between text-[10px] font-mono text-slate-400">
+                  <div className="flex items-center justify-between text-[10px] tabular-nums text-slate-400">
                     <span className="flex items-center space-x-1">
                       <Anchor className="h-3.5 w-3.5 text-slate-300" />
                       <span>Voyage: <span className="font-bold text-slate-700">{task.voyageNumber}</span></span>
@@ -218,7 +218,7 @@ export default function TasksView({ tasks, voyages, onAddTask, onUpdateTaskStatu
 
                   {/* Operational controls */}
                   <div className="flex items-center justify-between pt-1">
-                    <span className="text-[10px] text-slate-400 font-mono">
+                    <span className="text-[10px] text-slate-400 tabular-nums">
                       {task.status === 'Completed' ? 'Operations Clear' : 'Actions:'}
                     </span>
                     <div className="flex items-center space-x-1.5">
@@ -254,7 +254,7 @@ export default function TasksView({ tasks, voyages, onAddTask, onUpdateTaskStatu
                           <span>Close Task</span>
                         </button>
                       ) : (
-                        <div className="flex items-center space-x-1 text-emerald-600 text-xs font-bold font-mono">
+                        <div className="flex items-center space-x-1 text-emerald-600 text-xs font-bold tabular-nums">
                           <CheckCircle2 className="h-4 w-4" />
                           <span>Closed Log</span>
                         </div>
@@ -304,7 +304,7 @@ export default function TasksView({ tasks, voyages, onAddTask, onUpdateTaskStatu
                       className="w-full text-left p-2.5 rounded-lg border border-slate-200/60 bg-white hover:border-[#6C4CE1] transition-colors text-[11px] cursor-pointer"
                     >
                       <span className="font-semibold text-slate-800 block line-clamp-1">{tpl.title}</span>
-                      <span className="text-[10px] text-slate-400 font-mono mt-0.5 block">{tpl.role.replace('_', ' ')}</span>
+                      <span className="text-[10px] text-slate-400 tabular-nums mt-0.5 block">{tpl.role.replace('_', ' ')}</span>
                     </button>
                   ))}
                 </div>
@@ -387,7 +387,7 @@ export default function TasksView({ tasks, voyages, onAddTask, onUpdateTaskStatu
                     required
                     value={dueDate}
                     onChange={(e) => setDueDate(e.target.value)}
-                    className="w-full border border-slate-200 rounded-lg p-2 focus:ring-1 focus:ring-[#6C4CE1] focus:outline-none font-mono bg-white"
+                    className="w-full border border-slate-200 rounded-lg p-2 focus:ring-1 focus:ring-[#6C4CE1] focus:outline-none tabular-nums bg-white"
                   />
                 </div>
 

@@ -70,12 +70,12 @@ export default function CompanySettingsView({ userRole, org, onUpdateOrg }: Comp
               onChange={(e) => setLicenseId(e.target.value)}
               disabled={!isAdmin}
               placeholder="e.g. UK-PORT-AGENCY-992120-X"
-              className="w-full border border-slate-200 rounded-lg p-2 focus:ring-1 focus:ring-[#6C4CE1] focus:outline-none disabled:bg-slate-50 disabled:text-slate-400 bg-white text-xs font-mono"
+              className="w-full border border-slate-200 rounded-lg p-2 focus:ring-1 focus:ring-[#6C4CE1] focus:outline-none disabled:bg-slate-50 disabled:text-slate-400 bg-white text-xs tabular-nums"
             />
           </div>
 
           {!isAdmin && (
-            <span className="text-[10px] text-slate-400 font-mono block">Only Admins can modify company details.</span>
+            <span className="text-[10px] text-slate-400 tabular-nums block">Only Admins can modify company details.</span>
           )}
 
           {isAdmin && (

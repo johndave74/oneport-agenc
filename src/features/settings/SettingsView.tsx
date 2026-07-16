@@ -75,7 +75,7 @@ export default function SettingsView({
 
             <div className="space-y-1">
               <label className="text-slate-500 font-semibold">Permanent Access Role</label>
-              <div className="bg-slate-50 border border-slate-100 p-2.5 rounded-lg font-mono text-[10px] text-slate-600 uppercase flex items-center space-x-2">
+              <div className="bg-slate-50 border border-slate-100 p-2.5 rounded-lg tabular-nums text-[10px] text-slate-600 uppercase flex items-center space-x-2">
                 <Shield className="h-4 w-4 text-[#6C4CE1]" />
                 <span>{roleLabels[userRole]} permissions active</span>
               </div>

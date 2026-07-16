@@ -256,17 +256,17 @@ export default function VoyagesView({
               >
                 <div className="flex items-center justify-between w-full">
                   <span className="font-bold text-slate-800 text-sm">{voy.vesselName}</span>
-                  <span className="px-2 py-0.5 rounded font-mono text-[9px] font-bold bg-[#6C4CE1]/20 text-[#2D1B69] uppercase">
+                  <span className="px-2 py-0.5 rounded tabular-nums text-[9px] font-bold bg-[#6C4CE1]/20 text-[#2D1B69] uppercase">
                     {voy.voyageNumber}
                   </span>
                 </div>
                 
-                <div className="flex items-center space-x-2 text-xs text-slate-500 font-mono">
+                <div className="flex items-center space-x-2 text-xs text-slate-500 tabular-nums">
                   <MapPin className="h-3.5 w-3.5 text-slate-400 shrink-0" />
                   <span className="truncate">{voy.originPort} → {voy.destinationPort}</span>
                 </div>
 
-                <div className="flex items-center justify-between w-full text-[10px] pt-1 border-t border-slate-100/60 font-mono">
+                <div className="flex items-center justify-between w-full text-[10px] pt-1 border-t border-slate-100/60 tabular-nums">
                   <span className="text-slate-400">ETA: {voy.eta.split('T')[0]}</span>
                   <span className={`px-1.5 py-0.2 rounded-full font-bold text-[9px] ${
                     voy.status === 'Completed' ? 'bg-slate-100 text-slate-700' :
@@ -295,11 +295,11 @@ export default function VoyagesView({
                     <Ship className="h-5 w-5 text-slate-400" />
                     <span>Port Call: {selectedVoyage.vesselName}</span>
                   </h4>
-                  <p className="text-xs text-slate-500 font-mono">Assignees • Port Agent: James Vance • Ship Agent: Sara Tanaka</p>
+                  <p className="text-xs text-slate-500 tabular-nums">Assignees • Port Agent: James Vance • Ship Agent: Sara Tanaka</p>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <span className="text-xs font-mono text-slate-400">Status:</span>
-                  <span className="bg-[#6C4CE1]/10 text-[#2D1B69] font-bold px-2.5 py-1 rounded-lg text-xs font-mono border border-[#6C4CE1]/20">
+                  <span className="text-xs tabular-nums text-slate-400">Status:</span>
+                  <span className="bg-[#6C4CE1]/10 text-[#2D1B69] font-bold px-2.5 py-1 rounded-lg text-xs tabular-nums border border-[#6C4CE1]/20">
                     {selectedVoyage.status}
                   </span>
                   {(userRole === 'PORT_AGENT' || userRole === 'SHIP_AGENT' || userRole === 'PROTECTIVE_AGENT' || userRole === 'ADMIN') && (
@@ -314,7 +314,7 @@ export default function VoyagesView({
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-mono">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs tabular-nums">
                 <div className="bg-slate-50 p-4 rounded-lg border border-slate-100 space-y-2.5">
                   <div className="flex justify-between items-center pb-1 border-b border-slate-200/60">
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Routing Coordinates</span>
@@ -344,7 +344,7 @@ export default function VoyagesView({
                             type="text"
                             value={updVoyageNumber}
                             onChange={(e) => setUpdVoyageNumber(e.target.value)}
-                            className="w-full border border-slate-200 rounded p-1.5 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-[#6C4CE1] bg-white text-slate-800"
+                            className="w-full border border-slate-200 rounded p-1.5 text-xs tabular-nums focus:outline-none focus:ring-1 focus:ring-[#6C4CE1] bg-white text-slate-800"
                           />
                         </div>
                         <div>
@@ -353,7 +353,7 @@ export default function VoyagesView({
                             type="text"
                             value={updOriginPort}
                             onChange={(e) => setUpdOriginPort(e.target.value)}
-                            className="w-full border border-slate-200 rounded p-1.5 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-[#6C4CE1] bg-white text-slate-800"
+                            className="w-full border border-slate-200 rounded p-1.5 text-xs tabular-nums focus:outline-none focus:ring-1 focus:ring-[#6C4CE1] bg-white text-slate-800"
                           />
                         </div>
                         <div>
@@ -362,7 +362,7 @@ export default function VoyagesView({
                             type="text"
                             value={updDestinationPort}
                             onChange={(e) => setUpdDestinationPort(e.target.value)}
-                            className="w-full border border-slate-200 rounded p-1.5 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-[#6C4CE1] bg-white text-slate-800"
+                            className="w-full border border-slate-200 rounded p-1.5 text-xs tabular-nums focus:outline-none focus:ring-1 focus:ring-[#6C4CE1] bg-white text-slate-800"
                           />
                         </div>
                         <div>
@@ -371,7 +371,7 @@ export default function VoyagesView({
                             type="datetime-local"
                             value={updEta}
                             onChange={(e) => setUpdEta(e.target.value)}
-                            className="w-full border border-slate-200 rounded p-1.5 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-[#6C4CE1] bg-white text-slate-800"
+                            className="w-full border border-slate-200 rounded p-1.5 text-xs tabular-nums focus:outline-none focus:ring-1 focus:ring-[#6C4CE1] bg-white text-slate-800"
                           />
                         </div>
                         <div>
@@ -380,7 +380,7 @@ export default function VoyagesView({
                             type="datetime-local"
                             value={updEtd}
                             onChange={(e) => setUpdEtd(e.target.value)}
-                            className="w-full border border-slate-200 rounded p-1.5 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-[#6C4CE1] bg-white text-slate-800"
+                            className="w-full border border-slate-200 rounded p-1.5 text-xs tabular-nums focus:outline-none focus:ring-1 focus:ring-[#6C4CE1] bg-white text-slate-800"
                           />
                         </div>
                       </div>
@@ -446,7 +446,7 @@ export default function VoyagesView({
                             type="datetime-local"
                             value={updActualEta}
                             onChange={(e) => setUpdActualEta(e.target.value)}
-                            className="w-full border border-slate-200 rounded p-1.5 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-[#6C4CE1] bg-white text-slate-800"
+                            className="w-full border border-slate-200 rounded p-1.5 text-xs tabular-nums focus:outline-none focus:ring-1 focus:ring-[#6C4CE1] bg-white text-slate-800"
                           />
                         </div>
                         <div>
@@ -455,7 +455,7 @@ export default function VoyagesView({
                             type="datetime-local"
                             value={updActualEtb}
                             onChange={(e) => setUpdActualEtb(e.target.value)}
-                            className="w-full border border-slate-200 rounded p-1.5 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-[#6C4CE1] bg-white text-slate-800"
+                            className="w-full border border-slate-200 rounded p-1.5 text-xs tabular-nums focus:outline-none focus:ring-1 focus:ring-[#6C4CE1] bg-white text-slate-800"
                           />
                         </div>
                         <div>
@@ -464,7 +464,7 @@ export default function VoyagesView({
                             type="datetime-local"
                             value={updActualEtd}
                             onChange={(e) => setUpdActualEtd(e.target.value)}
-                            className="w-full border border-slate-200 rounded p-1.5 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-[#6C4CE1] bg-white text-slate-800"
+                            className="w-full border border-slate-200 rounded p-1.5 text-xs tabular-nums focus:outline-none focus:ring-1 focus:ring-[#6C4CE1] bg-white text-slate-800"
                           />
                         </div>
                       </div>
@@ -524,7 +524,7 @@ export default function VoyagesView({
               </div>
 
               {!editCargoMode ? (
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs font-mono">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs tabular-nums">
                   <div className="space-y-1">
                     <span className="text-[10px] text-slate-400 block font-bold uppercase">Cargo Classification</span>
                     <span className="font-semibold text-slate-800 text-sm block">{selectedVoyage.cargoType}</span>
@@ -549,7 +549,7 @@ export default function VoyagesView({
                         type="text"
                         value={updCargoType}
                         onChange={(e) => setUpdCargoType(e.target.value)}
-                        className="w-full border border-slate-200 rounded p-1.5 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-[#6C4CE1] bg-white"
+                        className="w-full border border-slate-200 rounded p-1.5 text-xs tabular-nums focus:outline-none focus:ring-1 focus:ring-[#6C4CE1] bg-white"
                       />
                     </div>
                     <div className="space-y-1">
@@ -558,7 +558,7 @@ export default function VoyagesView({
                         type="number"
                         value={updCargoQty}
                         onChange={(e) => setUpdCargoQty(Number(e.target.value))}
-                        className="w-full border border-slate-200 rounded p-1.5 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-[#6C4CE1] bg-white"
+                        className="w-full border border-slate-200 rounded p-1.5 text-xs tabular-nums focus:outline-none focus:ring-1 focus:ring-[#6C4CE1] bg-white"
                       />
                     </div>
                     <div className="space-y-1">
@@ -566,7 +566,7 @@ export default function VoyagesView({
                       <select
                         value={updCargoStatus}
                         onChange={(e) => setUpdCargoStatus(e.target.value)}
-                        className="w-full border border-slate-200 rounded p-1.5 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-[#6C4CE1] bg-white cursor-pointer"
+                        className="w-full border border-slate-200 rounded p-1.5 text-xs tabular-nums focus:outline-none focus:ring-1 focus:ring-[#6C4CE1] bg-white cursor-pointer"
                       >
                         <option value="In Transit">In Transit</option>
                         <option value="Discharging">Discharging</option>
@@ -622,7 +622,7 @@ export default function VoyagesView({
                         <span className={`font-semibold block ${item.completed ? 'text-slate-800' : 'text-slate-400'}`}>
                           {item.event}
                         </span>
-                        <span className="text-[10px] text-slate-400 font-mono">
+                        <span className="text-[10px] text-slate-400 tabular-nums">
                           {item.timestamp ? item.timestamp.replace('T', ' ') : 'Pending Schedule'}
                         </span>
                       </div>
@@ -640,7 +640,7 @@ export default function VoyagesView({
                           {item.completed ? 'Mark Incomplete' : 'Complete Event'}
                         </button>
                       ) : (
-                        <span className="text-[10px] text-slate-400 font-mono uppercase font-semibold">
+                        <span className="text-[10px] text-slate-400 tabular-nums uppercase font-semibold">
                           {item.completed ? 'Completed' : 'Awaiting Entry'}
                         </span>
                       )}
@@ -742,7 +742,7 @@ export default function VoyagesView({
                     value={voyageNumber}
                     onChange={(e) => setVoyageNumber(e.target.value)}
                     placeholder="e.g. PE-LNG-13"
-                    className="w-full border border-slate-200 rounded-lg p-2 focus:ring-1 focus:ring-[#6C4CE1] focus:outline-none font-mono bg-white"
+                    className="w-full border border-slate-200 rounded-lg p-2 focus:ring-1 focus:ring-[#6C4CE1] focus:outline-none tabular-nums bg-white"
                   />
                 </div>
                 <div className="space-y-1">

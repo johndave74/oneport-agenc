@@ -1,15 +1,15 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,500;1,600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,500;1,600&display=swap');
 @import "tailwindcss";
 
-/* Typography is now part of the OnePort Agency Design Language — see the
-   sidebar/dashboard's typographic scale before changing these tokens.
-   Inter is the primary UI font throughout the ERP (nav, tables, forms,
-   dashboards, headings). Playfair Display is reserved for the brand
-   wordmark (Logo.tsx) and marketing-page hero accents (Landing/Auth) —
-   it is never used for ERP headings or data. */
+/* OnePort Agency Design Language — a single UI typeface.
+   Inter is used everywhere in the ERP (nav, tables, forms, dashboards,
+   headings). Numeric alignment is handled with `tabular-nums`, not a second
+   monospace family, so the interface reads as one enterprise system.
+   Playfair Display is reserved solely for the brand wordmark (Logo.tsx) and
+   marketing-page accents (Landing/Auth) — never for ERP headings or data. */
 @theme {
   --font-sans: "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --font-body: "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  --font-mono: "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --font-serif: "Playfair Display", ui-serif, Georgia, serif;
 }

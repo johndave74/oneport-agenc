@@ -127,7 +127,7 @@ export default function PartnersView({ partners, onAddPartner, onEditPartner, on
                       {p.phone && <div className="flex items-center gap-1 text-[10px] text-slate-500"><Phone className="h-3 w-3" />{p.phone}</div>}
                       {!p.contactName && !p.email && !p.phone && <span className="text-slate-400">—</span>}
                     </td>
-                    <td className="py-4 px-4 text-[10px] text-slate-500 font-mono">{(p.portsCovered || []).join(', ') || '—'}</td>
+                    <td className="py-4 px-4 text-[10px] text-slate-500 tabular-nums">{(p.portsCovered || []).join(', ') || '—'}</td>
                     <td className="py-4 px-5 text-right">
                       <div className="flex items-center justify-end space-x-2">
                         <button onClick={() => openEditModal(p)} className="p-1.5 text-slate-400 hover:text-[#2D1B69] hover:bg-slate-100 rounded-lg transition-colors cursor-pointer" title="Edit Partner">

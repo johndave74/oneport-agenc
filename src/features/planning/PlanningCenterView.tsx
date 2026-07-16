@@ -89,7 +89,7 @@ export default function PlanningCenterView({ vessels, voyages, tasks, users }: P
                     <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] bg-slate-50 p-4 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all">
                       <div className="flex justify-between items-start mb-1">
                         <span className="font-bold text-slate-800 text-sm">{voyage.vesselName}</span>
-                        <span className="text-xs font-mono font-bold text-[#6C4CE1] bg-[#F2EFFF] px-2 py-0.5 rounded-full">{new Date(voyage.eta).toLocaleDateString()}</span>
+                        <span className="text-xs tabular-nums font-bold text-[#6C4CE1] bg-[#F2EFFF] px-2 py-0.5 rounded-full">{new Date(voyage.eta).toLocaleDateString()}</span>
                       </div>
                       <div className="text-xs text-slate-500 font-medium">Voyage: {voyage.voyageNumber}</div>
                       <div className="mt-2 text-xs text-slate-600 flex items-center justify-between">

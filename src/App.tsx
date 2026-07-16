@@ -26,6 +26,9 @@ import {
 } from '@/types';
 import { computeCommandKpis } from '@/features/dashboard/kpis';
 import { computeRuleFindings } from '@/features/dashboard/aiRulesEngine';
+import { loadPermissions } from '@/lib/rbac/session';
+import { Permission, allowedViews, defaultPermissionsForRole } from '@/lib/rbac/permissions';
+import { RoleKey } from '@/types';
 
 // Component imports
 import Sidebar from '@/components/layout/Sidebar';
@@ -44,7 +47,9 @@ import NotificationsView from '@/features/notifications/NotificationsView';
 import SettingsView from '@/features/settings/SettingsView';
 import CompanySettingsView from '@/features/settings/CompanySettingsView';
 import AdminView from '@/features/admin/AdminView';
+import OrganizationsView from '@/features/admin/OrganizationsView';
 import AuthView from '@/features/auth/AuthView';
+import AcceptInviteView from '@/features/auth/AcceptInviteView';
 import LandingView from '@/features/auth/LandingView';
 import LaytimeCalculatorView from '@/features/laytime/LaytimeCalculatorView';
 import CrmView from '@/features/crm/CrmView';
@@ -54,9 +59,16 @@ import TariffsView from '@/features/tariffs/TariffsView';
 import InvoicesView from '@/features/invoices/InvoicesView';
 import ApprovalsView from '@/features/approvals/ApprovalsView';
 
+// Captured at module load, before supabase-js clears the URL hash: an invite /
+// recovery link lands here so we can route the user to set their password.
+const INITIAL_HASH = typeof window !== 'undefined' ? window.location.hash : '';
+const IS_INVITE_LINK = /type=(invite|recovery|signup)/.test(INITIAL_HASH);
+
 export default function App() {
   const [authChecked, setAuthChecked] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [permissions, setPermissions] = useState<Set<Permission>>(new Set());
+  const [inviteFlow, setInviteFlow] = useState(IS_INVITE_LINK);
   const [currentView, setView] = useState<string>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
@@ -80,6 +92,7 @@ export default function App() {
   const [crewMembers, setCrewMembers] = useState<CrewMember[]>([]);
   const [tariffs, setTariffs] = useState<Tariff[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [organizations, setOrganizations] = useState<Organization[]>([]);
 
   const clearWorkspaceData = () => {
     setUsers([]);
@@ -98,17 +111,21 @@ export default function App() {
     setCrewMembers([]);
     setTariffs([]);
     setInvoices([]);
+    setOrganizations([]);
+    setPermissions(new Set());
   };
 
   const loadWorkspaceData = useCallback(async () => {
     const [
       usersData, vesselsData, voyagesData, tasksData, documentsData,
       expensesData, messagesData, notificationsData, incidentsData, auditLogsData,
-      laytimeCalculationsData, orgData, partnersData, crewMembersData, tariffsData, invoicesData
+      laytimeCalculationsData, orgData, partnersData, crewMembersData, tariffsData, invoicesData,
+      organizationsData
     ] = await Promise.all([
       Db.getUsers(), Db.getVessels(), Db.getVoyages(), Db.getTasks(), Db.getDocuments(),
       Db.getExpenses(), Db.getMessages(), Db.getNotifications(), Db.getIncidents(), Db.getAuditLogs(),
-      Db.getLaytimeCalculations(), Db.getOrg(), Db.getPartners(), Db.getCrewMembers(), Db.getTariffs(), Db.getInvoices()
+      Db.getLaytimeCalculations(), Db.getOrg(), Db.getPartners(), Db.getCrewMembers(), Db.getTariffs(), Db.getInvoices(),
+      Db.getOrganizations()
     ]);
     setUsers(usersData);
     setVessels(vesselsData);
@@ -126,6 +143,7 @@ export default function App() {
     setCrewMembers(crewMembersData);
     setTariffs(tariffsData);
     setInvoices(invoicesData);
+    setOrganizations(organizationsData);
   }, []);
 
   // Restore session on load, and keep currentUser in sync with auth state.
@@ -139,6 +157,7 @@ export default function App() {
         if (user) {
           setCurrentUser(user);
           await loadWorkspaceData();
+          loadPermissions(user).then((p) => { if (active) setPermissions(p); }).catch(() => {});
         }
       } catch (err) {
         console.error('Failed to restore session:', err);
@@ -187,6 +206,7 @@ export default function App() {
   const handleLoginSuccess = async (user: User) => {
     setCurrentUser(user);
     await loadWorkspaceData();
+    loadPermissions(user).then(setPermissions).catch(() => {});
     const log = await Db.addAuditLog(user.id, user.name, 'Gateway Session Authenticated', `Successfully authenticated into the centralized database with role ${user.role}.`);
     setAuditLogs(prev => [log, ...prev]);
     setView('dashboard');
@@ -341,10 +361,27 @@ export default function App() {
     setOrgState(updated);
   };
 
-  const handleUpdateUserRole = async (userId: string, role: UserRole) => {
+  const handleUpdateUserRole = async (userId: string, role: string) => {
     if (!currentUser) return;
     const updated = await Db.updateUserRole(userId, role);
     setUsers(prev => prev.map(u => u.id === userId ? updated : u));
+  };
+
+  const handleAddOrganization = async (input: { companyName: string; address?: string; licenseId?: string }): Promise<Organization> => {
+    const item = await Db.addOrganization(input);
+    setOrganizations(prev => [...prev, item]);
+    return item;
+  };
+
+  const handleUpdateOrganization = async (id: string, updates: { companyName?: string; address?: string; licenseId?: string; status?: string }): Promise<Organization> => {
+    const updated = await Db.updateOrganization(id, updates);
+    setOrganizations(prev => prev.map(o => o.id === id ? updated : o));
+    return updated;
+  };
+
+  const handleDeleteOrganization = async (id: string): Promise<void> => {
+    await Db.deleteOrganization(id);
+    setOrganizations(prev => prev.filter(o => o.id !== id));
   };
 
   const handleMarkNotificationRead = async (id: string) => {
@@ -440,15 +477,25 @@ export default function App() {
     setInvoices(prev => prev.filter(i => i.id !== id));
   };
 
+  // Falls back to the role's documented defaults until live grants load, so the
+  // app never renders with an empty permission set mid-fetch.
+  const effectivePermissions = useMemo<Set<Permission>>(() => {
+    if (permissions.size) return permissions;
+    if (currentUser) return defaultPermissionsForRole(currentUser.role as RoleKey);
+    return new Set<Permission>();
+  }, [permissions, currentUser]);
+
   const renderMainView = () => {
     if (!currentUser) return null;
 
-    const allowed = ROLE_ALLOWED_VIEWS[currentUser.role] || [];
+    const allowed = allowedViews(effectivePermissions);
+    if (currentUser.isPlatformAdmin) allowed.push('organizations');
     if (!allowed.includes(currentView)) {
       return (
         <DashboardView
           userRole={currentUser.role}
           userName={currentUser.name}
+          currentUserId={currentUser.id}
           vessels={vessels}
           voyages={voyages}
           tasks={tasks}
@@ -456,10 +503,16 @@ export default function App() {
           incidents={incidents}
           users={users}
           laytimeCalculations={laytimeCalculations}
+          invoices={invoices}
+          partners={partners}
+          crewMembers={crewMembers}
+          auditLogs={auditLogs}
+          notifications={notifications}
           onCompleteTask={handleCompleteTask}
           onApproveExpense={handleApproveExpense}
           onRejectExpense={handleRejectExpense}
           onCreateIncident={handleCreateIncident}
+          onMarkAllNotificationsRead={handleMarkAllNotificationsRead}
           setView={setView}
         />
       );
@@ -467,7 +520,7 @@ export default function App() {
 
     switch (currentView) {
       case 'planning': return <PlanningCenterView vessels={vessels} voyages={voyages} tasks={tasks} users={users} />;
-      case 'dashboard': return <DashboardView userRole={currentUser.role} userName={currentUser.name} vessels={vessels} voyages={voyages} tasks={tasks} expenses={expenses} incidents={incidents} users={users} laytimeCalculations={laytimeCalculations} onCompleteTask={handleCompleteTask} onApproveExpense={handleApproveExpense} onRejectExpense={handleRejectExpense} onCreateIncident={handleCreateIncident} setView={setView} />;
+      case 'dashboard': return <DashboardView userRole={currentUser.role} userName={currentUser.name} currentUserId={currentUser.id} vessels={vessels} voyages={voyages} tasks={tasks} expenses={expenses} incidents={incidents} users={users} laytimeCalculations={laytimeCalculations} invoices={invoices} partners={partners} crewMembers={crewMembers} auditLogs={auditLogs} notifications={notifications} onCompleteTask={handleCompleteTask} onApproveExpense={handleApproveExpense} onRejectExpense={handleRejectExpense} onCreateIncident={handleCreateIncident} onMarkAllNotificationsRead={handleMarkAllNotificationsRead} setView={setView} />;
       case 'vessels': return <VesselsView vessels={vessels} users={users} onAddVessel={handleAddVessel} onEditVessel={handleEditVessel} onDeleteVessel={handleDeleteVessel} onUpdateVesselStatus={handleUpdateVesselStatus} userRole={currentUser.role} />;
       case 'voyages': return <VoyagesView voyages={voyages} vessels={vessels} onAddVoyage={handleAddVoyage} onAddVessel={handleAddVessel} onUpdateCargoDetails={handleUpdateCargoDetails} onDeleteVoyage={handleDeleteVoyage} onToggleTimelineEvent={handleToggleTimelineEvent} userRole={currentUser.role} />;
       case 'tasks': return <TasksView tasks={tasks} voyages={voyages} onAddTask={handleAddTask} onUpdateTaskStatus={handleUpdateTaskStatus} userRole={currentUser.role} />;
@@ -485,11 +538,32 @@ export default function App() {
       case 'notifications': return <NotificationsView notifications={notifications} onMarkRead={handleMarkNotificationRead} onClearAll={handleMarkAllNotificationsRead} userRole={currentUser.role} />;
       case 'settings': return <SettingsView userName={currentUser.name} userEmail={currentUser.email} userRole={currentUser.role} onUpdateProfile={handleUpdateProfile} />;
       case 'company': return <CompanySettingsView userRole={currentUser.role} org={org} onUpdateOrg={handleUpdateOrg} />;
+      case 'organizations': return <OrganizationsView organizations={organizations} users={users} currentOrgId={currentUser.organizationId} onCreateOrganization={handleAddOrganization} onUpdateOrganization={handleUpdateOrganization} onDeleteOrganization={handleDeleteOrganization} />;
       case 'admin': return <AdminView users={users} auditLogs={auditLogs} onUpdateUserRole={handleUpdateUserRole} initialTab="users" />;
       case 'auditlogs': return <AdminView users={users} auditLogs={auditLogs} onUpdateUserRole={handleUpdateUserRole} initialTab="auditlogs" />;
       default: return <div className="p-8 text-center text-slate-500 text-xs">Operational module "{currentView}" under system maintenance.</div>;
     }
   };
+
+  if (inviteFlow) {
+    return (
+      <AcceptInviteView
+        onComplete={(user) => {
+          setInviteFlow(false);
+          if (typeof window !== 'undefined' && window.history.replaceState) {
+            window.history.replaceState(null, '', window.location.pathname);
+          }
+          handleLoginSuccess(user);
+        }}
+        onCancel={() => {
+          setInviteFlow(false);
+          if (typeof window !== 'undefined' && window.history.replaceState) {
+            window.history.replaceState(null, '', window.location.pathname);
+          }
+        }}
+      />
+    );
+  }
 
   if (!authChecked) {
     return (
@@ -508,7 +582,7 @@ export default function App() {
 
   return (
     <div className="flex bg-[#F4F7F9] min-h-screen text-slate-800 antialiased font-sans relative">
-      <Sidebar currentView={currentView} setView={setView} userRole={currentUser.role} userName={currentUser.name} onLogout={handleLogout} isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
+      <Sidebar currentView={currentView} setView={setView} userRole={currentUser.role} userName={currentUser.name} permissions={effectivePermissions} isPlatformAdmin={!!currentUser.isPlatformAdmin} onLogout={handleLogout} isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
       <div className="flex-1 flex flex-col min-w-0">
         <Header currentView={currentView} userRole={currentUser.role} userName={currentUser.name} notifications={notifications} onMarkAllRead={handleMarkAllNotificationsRead} orgName={org.companyName} onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} onLogout={handleLogout} setView={setView} onOpenCommandPalette={() => setIsCommandPaletteOpen(true)} opsSummary={opsSummary} />
         <main className="flex-1 overflow-y-auto p-4 md:p-8">

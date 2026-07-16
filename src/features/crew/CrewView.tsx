@@ -122,14 +122,14 @@ export default function CrewView({ crewMembers, vessels, onAddCrewMember, onEdit
                   <tr key={c.id} className="hover:bg-slate-50/50 transition-colors">
                     <td className="py-4 px-5">
                       <span className="font-bold text-slate-800 text-sm block">{c.fullName}</span>
-                      <span className="text-[10px] text-slate-500 bg-slate-100 rounded px-1.5 py-0.5 inline-block font-mono font-semibold mt-1">{c.rank}</span>
+                      <span className="text-[10px] text-slate-500 bg-slate-100 rounded px-1.5 py-0.5 inline-block tabular-nums font-semibold mt-1">{c.rank}</span>
                     </td>
                     <td className="py-4 px-4 text-slate-600">{c.vesselName || <span className="text-slate-400">Unassigned</span>}</td>
-                    <td className="py-4 px-4 font-mono text-[10px] text-slate-500 space-y-0.5">
+                    <td className="py-4 px-4 tabular-nums text-[10px] text-slate-500 space-y-0.5">
                       <div>{c.nationality || '—'}</div>
                       <div>Seaman Book: {c.seamanBookNumber || '—'}</div>
                     </td>
-                    <td className="py-4 px-4 font-mono text-[10px] text-slate-600 space-y-0.5">
+                    <td className="py-4 px-4 tabular-nums text-[10px] text-slate-600 space-y-0.5">
                       <div className="text-emerald-700 font-semibold">On: {c.signOnDate || '—'}</div>
                       <div className="text-amber-700 font-semibold">Off: {c.signOffDate || '—'}</div>
                     </td>

@@ -205,7 +205,7 @@ export default function CrmView({
         
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           <div className="space-y-1.5">
-            <span className="bg-[#6C4CE1]/20 border border-[#6C4CE1]/40 text-[#00b0ff] text-[10px] font-mono font-bold tracking-widest uppercase px-2.5 py-0.5 rounded-full inline-block">
+            <span className="bg-[#6C4CE1]/20 border border-[#6C4CE1]/40 text-[#00b0ff] text-[10px] tabular-nums font-bold tracking-widest uppercase px-2.5 py-0.5 rounded-full inline-block">
               Maritime CRM Network
             </span>
             <h1 className="text-xl md:text-2xl font-bold tracking-tight">Agent Directory & Affiliation Center</h1>
@@ -217,7 +217,7 @@ export default function CrmView({
           <div className="bg-white/5 border border-white/10 rounded-xl p-4 shrink-0 w-full md:w-auto max-w-sm">
             <div className="flex items-center space-x-2 mb-2.5">
               <Sparkles className="h-4 w-4 text-[#6C4CE1]" />
-              <span className="text-[11px] font-bold tracking-wider text-[#6C4CE1] uppercase font-mono">
+              <span className="text-[11px] font-bold tracking-wider text-[#6C4CE1] uppercase tabular-nums">
                 {currentUser.role === 'PORT_AGENT' ? 'Top Rated Charterer Match' : 'Top Rated Coordinator Match'}
               </span>
             </div>
@@ -232,7 +232,7 @@ export default function CrmView({
                 <p className="text-[10px] text-slate-300">{recommendedAgents[0].specialty}</p>
                 <div className="flex flex-wrap gap-1 mt-1.5">
                   {(recommendedAgents[0].locations || []).slice(0, 2).map(p => (
-                    <span key={p} className="text-[8px] bg-white/10 px-1.5 py-0.5 rounded font-mono text-slate-300">{p}</span>
+                    <span key={p} className="text-[8px] bg-white/10 px-1.5 py-0.5 rounded tabular-nums text-slate-300">{p}</span>
                   ))}
                 </div>
               </div>
@@ -302,7 +302,7 @@ export default function CrmView({
         </div>
 
         {/* Counter Header */}
-        <div className="flex justify-between items-center text-xs text-slate-400 font-semibold font-mono pt-1">
+        <div className="flex justify-between items-center text-xs text-slate-400 font-semibold tabular-nums pt-1">
           <span>SHOWING {filteredUsers.length} CERTIFIED REGIONAL AGENTS</span>
           <span className="text-slate-300">|</span>
           <span>CURRENT SIMULATION MODE: <span className="text-[#6C4CE1] uppercase">{currentUser.role.replace('_', ' ')}</span></span>
@@ -339,7 +339,7 @@ export default function CrmView({
                     <div>
                       <h4 className="font-bold text-slate-800 text-sm">{agent.name}</h4>
                       <div className="flex items-center space-x-2 mt-0.5">
-                        <span className={`text-[9px] font-mono font-bold tracking-wider uppercase px-1.5 py-0.5 rounded-sm border ${
+                        <span className={`text-[9px] tabular-nums font-bold tracking-wider uppercase px-1.5 py-0.5 rounded-sm border ${
                           isPortAgent ? 'bg-[#6C4CE1]/10/50 text-[#6C4CE1] border-[#6C4CE1]/20/50' :
                           isShipAgent ? 'bg-sky-50/50 text-sky-700 border-sky-100/50' :
                           'bg-purple-50/50 text-purple-700 border-purple-100/50'
@@ -352,7 +352,7 @@ export default function CrmView({
                           agent.status === 'Busy' ? 'bg-amber-500' :
                           'bg-indigo-500'
                         }`} />
-                        <span className="text-[10px] text-slate-400 font-semibold font-mono">{agent.status}</span>
+                        <span className="text-[10px] text-slate-400 font-semibold tabular-nums">{agent.status}</span>
                       </div>
                     </div>
                   </div>
@@ -361,7 +361,7 @@ export default function CrmView({
                   {agent.rating && (
                     <div className="bg-amber-50 border border-amber-200/50 rounded-lg px-2 py-1 text-center flex items-center space-x-1 shrink-0">
                       <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500" />
-                      <span className="font-mono text-[11px] font-bold text-amber-800">{agent.rating}</span>
+                      <span className="tabular-nums text-[11px] font-bold text-amber-800">{agent.rating}</span>
                     </div>
                   )}
 
@@ -392,7 +392,7 @@ export default function CrmView({
                 )}
 
                 {/* Contact Indicators */}
-                <div className="pt-2 border-t border-slate-100/60 grid grid-cols-2 gap-2 text-[11px] text-slate-500 font-mono">
+                <div className="pt-2 border-t border-slate-100/60 grid grid-cols-2 gap-2 text-[11px] text-slate-500 tabular-nums">
                   <div className="flex items-center space-x-1.5 truncate">
                     <Mail className="h-3.5 w-3.5 text-slate-400" />
                     <span className="truncate" title={agent.email}>{agent.email}</span>
@@ -407,7 +407,7 @@ export default function CrmView({
                 {agent.completedTurnarounds !== undefined && (
                   <div className="bg-slate-50/50 border border-slate-150 rounded-lg p-2 flex items-center justify-between text-xs">
                     <span className="text-slate-500 font-medium">Historic Turnaround operations:</span>
-                    <span className="font-bold font-mono text-slate-800 flex items-center">
+                    <span className="font-bold tabular-nums text-slate-800 flex items-center">
                       <Award className="h-3.5 w-3.5 text-[#6C4CE1] mr-1" />
                       {agent.completedTurnarounds} Voyages
                     </span>
@@ -507,7 +507,7 @@ export default function CrmView({
                   type="text"
                   disabled
                   value={`${selectedAgent.name} <${selectedAgent.email}>`}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-500 font-mono"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-500 tabular-nums"
                 />
               </div>
 
@@ -637,7 +637,7 @@ export default function CrmView({
                   </div>
                   <div>
                     <span className="font-bold text-xs text-slate-800 block">{selectedAgent.name}</span>
-                    <span className="text-[10px] text-slate-400 font-mono block">Supports: {selectedAgent.locations?.join(', ')}</span>
+                    <span className="text-[10px] text-slate-400 tabular-nums block">Supports: {selectedAgent.locations?.join(', ')}</span>
                   </div>
                 </div>
               </div>

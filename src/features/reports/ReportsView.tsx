@@ -139,7 +139,7 @@ export default function ReportsView({ vessels, voyages, incidents, expenses }: R
           </h4>
           <div className="space-y-3.5 text-xs">
             <div className="space-y-1">
-              <div className="flex justify-between text-[11px] font-mono text-slate-500">
+              <div className="flex justify-between text-[11px] tabular-nums text-slate-500">
                 <span>Pilotage Costs</span>
                 <span className="font-bold text-slate-700">${totalPilotageSpend.toLocaleString()}</span>
               </div>
@@ -149,7 +149,7 @@ export default function ReportsView({ vessels, voyages, incidents, expenses }: R
             </div>
 
             <div className="space-y-1">
-              <div className="flex justify-between text-[11px] font-mono text-slate-500">
+              <div className="flex justify-between text-[11px] tabular-nums text-slate-500">
                 <span>Tug Assistance</span>
                 <span className="font-bold text-slate-700">${totalTugSpend.toLocaleString()}</span>
               </div>
@@ -159,7 +159,7 @@ export default function ReportsView({ vessels, voyages, incidents, expenses }: R
             </div>
 
             <div className="space-y-1">
-              <div className="flex justify-between text-[11px] font-mono text-slate-500">
+              <div className="flex justify-between text-[11px] tabular-nums text-slate-500">
                 <span>Marine Fuel Spend</span>
                 <span className="font-bold text-slate-700">${totalFuelSpend.toLocaleString()}</span>
               </div>
@@ -179,7 +179,7 @@ export default function ReportsView({ vessels, voyages, incidents, expenses }: R
             
             {/* Viewer Controls bar */}
             <div className="p-4 border-b border-slate-200 bg-slate-50/50 flex items-center justify-between">
-              <span className="text-xs font-mono font-bold text-slate-500">FORMAT: PDF EXPORT PREVIEW</span>
+              <span className="text-xs tabular-nums font-bold text-slate-500">FORMAT: PDF EXPORT PREVIEW</span>
               <div className="flex items-center space-x-2">
                 <button
                   onClick={() => setReportSigned(!reportSigned)}
@@ -212,18 +212,18 @@ export default function ReportsView({ vessels, voyages, incidents, expenses }: R
                     <Ship className="h-5 w-5 text-[#6C4CE1]" />
                     <span className="text-sm font-bold text-slate-800 tracking-tight">APEX PORT AGENCY SERVICES</span>
                   </div>
-                  <p className="text-[10px] text-slate-400 font-mono">Oceanic Command Terminal 5, Southampton, SO14</p>
+                  <p className="text-[10px] text-slate-400 tabular-nums">Oceanic Command Terminal 5, Southampton, SO14</p>
                 </div>
                 <div className="text-right">
                   <span className="text-xs font-bold text-slate-700 block">PORT OPERATION STATEMENT</span>
-                  <span className="text-[10px] text-slate-400 font-mono block">DATE: {new Date().toISOString().substring(0, 10)}</span>
+                  <span className="text-[10px] text-slate-400 tabular-nums block">DATE: {new Date().toISOString().substring(0, 10)}</span>
                 </div>
               </div>
 
               {/* Vessel specs block */}
               <div className="space-y-3.5">
-                <h5 className="text-[11px] font-bold uppercase tracking-wider text-slate-800 font-mono">I. Vessel Registry Identity</h5>
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 text-xs font-mono bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+                <h5 className="text-[11px] font-bold uppercase tracking-wider text-slate-800 tabular-nums">I. Vessel Registry Identity</h5>
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 text-xs tabular-nums bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
                   <div>
                     <span className="text-[10px] text-slate-400 block font-bold uppercase">Vessel Name</span>
                     <span className="font-bold text-slate-800">{selectedVessel.vesselName}</span>
@@ -246,12 +246,12 @@ export default function ReportsView({ vessels, voyages, incidents, expenses }: R
               {/* Conditionally render template body */}
               {activeReportTemplate === 'arrival' && (
                 <div className="space-y-4">
-                  <h5 className="text-[11px] font-bold uppercase tracking-wider text-slate-800 font-mono">II. Arrival Clearance Parameters</h5>
+                  <h5 className="text-[11px] font-bold uppercase tracking-wider text-slate-800 tabular-nums">II. Arrival Clearance Parameters</h5>
                   <div className="bg-white rounded-xl border border-slate-200/80 p-5 space-y-4 text-xs leading-relaxed text-slate-600">
                     <p>
                       This serves as official confirmation that the vessel <span className="font-bold text-slate-800">{selectedVessel.vesselName}</span> is cleared for pilot boarding and berthing operations at <span className="font-semibold text-slate-800">{selectedVessel.currentPort}</span>.
                     </p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 font-mono">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 tabular-nums">
                       <div>• Estimated Pilot Entry (ETA): <span className="font-semibold text-slate-800">{selectedVessel.eta.replace('T', ' ')}</span></div>
                       <div>• Captain Command: <span className="font-semibold text-slate-800">{selectedVessel.captainDetails}</span></div>
                       <div>• Outward voyage ID: <span className="font-semibold text-slate-800">{selectedVessel.voyageNumber}</span></div>
@@ -263,12 +263,12 @@ export default function ReportsView({ vessels, voyages, incidents, expenses }: R
 
               {activeReportTemplate === 'departure' && (
                 <div className="space-y-4">
-                  <h5 className="text-[11px] font-bold uppercase tracking-wider text-slate-800 font-mono">II. Outbound Port Clearance Parameters</h5>
+                  <h5 className="text-[11px] font-bold uppercase tracking-wider text-slate-800 tabular-nums">II. Outbound Port Clearance Parameters</h5>
                   <div className="bg-white rounded-xl border border-slate-200/80 p-5 space-y-4 text-xs leading-relaxed text-slate-600">
                     <p>
                       Official clearance statement certifying that all outbound customs declarations, port fees, and crew registers have been cleared in full for <span className="font-bold text-slate-800">{selectedVessel.vesselName}</span>.
                     </p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 font-mono">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 tabular-nums">
                       <div>• Departure Time (ETD): <span className="font-semibold text-slate-800">{selectedVessel.etd.replace('T', ' ')}</span></div>
                       <div>• Cargo Manifest Cleared: <span className="text-emerald-600 font-bold">YES</span></div>
                       <div>• Marine Fuel (MGO) supplied: <span className="font-semibold text-slate-800">350 Metric Tons</span></div>
@@ -280,12 +280,12 @@ export default function ReportsView({ vessels, voyages, incidents, expenses }: R
 
               {activeReportTemplate === 'delay' && (
                 <div className="space-y-4">
-                  <h5 className="text-[11px] font-bold uppercase tracking-wider text-rose-800 font-mono">II. Incident and Delay Record statement</h5>
+                  <h5 className="text-[11px] font-bold uppercase tracking-wider text-rose-800 tabular-nums">II. Incident and Delay Record statement</h5>
                   <div className="bg-white rounded-xl border border-slate-200/80 p-5 space-y-4 text-xs leading-relaxed text-slate-600">
                     <p>
                       Log statement analyzing operational disruptions, pilot delays, customs flags, or bunkering holdups for voyage <span className="font-bold text-slate-800">{selectedVessel.voyageNumber}</span>.
                     </p>
-                    <div className="space-y-3 font-mono">
+                    <div className="space-y-3 tabular-nums">
                       {incidents.filter(inc => inc.voyageNumber === selectedVessel.voyageNumber).length === 0 ? (
                         <div className="p-4 bg-slate-50 border border-slate-100 rounded text-center text-slate-400">
                           Perfect Record: No delay incidents registered on this voyage.
@@ -308,12 +308,12 @@ export default function ReportsView({ vessels, voyages, incidents, expenses }: R
 
               {activeReportTemplate === 'daily' && (
                 <div className="space-y-4">
-                  <h5 className="text-[11px] font-bold uppercase tracking-wider text-slate-800 font-mono">II. Voyage Spend Statement & Variance</h5>
+                  <h5 className="text-[11px] font-bold uppercase tracking-wider text-slate-800 tabular-nums">II. Voyage Spend Statement & Variance</h5>
                   <div className="bg-white rounded-xl border border-slate-200/80 p-5 space-y-4 text-xs leading-relaxed text-slate-600">
                     <p>
                       Detailed disbursement costs compared to proforma values. Summed from active expenses recorded for <span className="font-bold text-slate-800">{selectedVessel.voyageNumber}</span>:
                     </p>
-                    <table className="w-full text-left font-mono text-[11px] border-collapse">
+                    <table className="w-full text-left tabular-nums text-[11px] border-collapse">
                       <thead>
                         <tr className="border-b border-slate-100 text-slate-400 uppercase font-bold">
                           <th className="py-2">Category</th>
@@ -342,11 +342,11 @@ export default function ReportsView({ vessels, voyages, incidents, expenses }: R
               {/* Signature block */}
               <div className="pt-6 border-t border-slate-200 flex justify-between items-center text-xs">
                 <div>
-                  <span className="text-slate-400 font-mono block">CLEARANCE SYSTEM AUDIT ID</span>
-                  <span className="font-mono text-slate-600 font-bold">APEX-LOG-2026-07-03</span>
+                  <span className="text-slate-400 tabular-nums block">CLEARANCE SYSTEM AUDIT ID</span>
+                  <span className="tabular-nums text-slate-600 font-bold">APEX-LOG-2026-07-03</span>
                 </div>
                 <div className="text-right">
-                  <span className="text-slate-400 font-mono block">AGENT SIGN-OFF AUTHORIZED</span>
+                  <span className="text-slate-400 tabular-nums block">AGENT SIGN-OFF AUTHORIZED</span>
                   <div className="h-10 flex items-center justify-end">
                     {reportSigned ? (
                       <span className="font-sans italic font-bold text-[#6C4CE1] text-base border-b border-[#6C4CE1] border-dashed animate-pulse">
