@@ -6,13 +6,14 @@ import { AdminApi } from '@/lib/supabase/adminApi';
 interface AdminViewProps {
   users: User[];
   auditLogs: AuditLog[];
-  onUpdateUserRole: (userId: string, role: string) => void;
+  onUpdateUserRole: (userId: string, role: string) => void | Promise<void>;
   initialTab?: 'users' | 'auditlogs';
   organizations?: Organization[];
   allowOrgSelect?: boolean;
   onUserCreated?: () => void;
   roleFilter?: string;
   title?: string;
+  currentUserId?: string;
 }
 
 const DIRECTORY_ROLES: { key: string; label: string }[] = [
@@ -30,7 +31,7 @@ const DIRECTORY_ROLES: { key: string; label: string }[] = [
 // Roles an admin can assign when creating a user (excludes Platform Super Admin).
 const CREATE_ROLES = DIRECTORY_ROLES.filter((r) => r.key !== 'PLATFORM_SUPER_ADMIN');
 
-export default function AdminView({ users, auditLogs, onUpdateUserRole, initialTab = 'users', organizations = [], allowOrgSelect = false, onUserCreated, roleFilter, title }: AdminViewProps) {
+export default function AdminView({ users, auditLogs, onUpdateUserRole, initialTab = 'users', organizations = [], allowOrgSelect = false, onUserCreated, roleFilter, title, currentUserId }: AdminViewProps) {
   const shownUsers = roleFilter ? users.filter((u) => (u.role as string) === roleFilter) : users;
   const orgName = (id: string) => organizations.find((o) => o.id === id)?.companyName || id;
   const showOrgColumn = organizations.length > 0;
@@ -38,6 +39,22 @@ export default function AdminView({ users, auditLogs, onUpdateUserRole, initialT
   const [form, setForm] = useState({ name: '', email: '', password: '', roleKey: 'PORT_AGENT', organizationId: '' });
   const [busy, setBusy] = useState(false);
   const [formMsg, setFormMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [roleError, setRoleError] = useState<string | null>(null);
+
+  // Count Org Admins per organization to protect the last one.
+  const orgAdminCounts = users.reduce<Record<string, number>>((acc, u) => {
+    if ((u.role as string) === 'ORG_ADMIN') acc[u.organizationId] = (acc[u.organizationId] || 0) + 1;
+    return acc;
+  }, {});
+
+  const changeRole = async (u: User, role: string) => {
+    setRoleError(null);
+    try {
+      await onUpdateUserRole(u.id, role);
+    } catch (err) {
+      setRoleError(err instanceof Error ? err.message : 'Could not change role.');
+    }
+  };
 
   const submitCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -118,6 +135,12 @@ export default function AdminView({ users, auditLogs, onUpdateUserRole, initialT
             </button>
           </div>
 
+          {roleError && (
+            <div className="mx-4 mt-3 flex items-start gap-2 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-lg px-3 py-2">
+              <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+              <span>{roleError}</span>
+            </div>
+          )}
           <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
@@ -148,13 +171,27 @@ export default function AdminView({ users, auditLogs, onUpdateUserRole, initialT
                     </span>
                   </td>
                   <td className="py-3 px-4 text-right">
-                    <select
-                      value={u.role}
-                      onChange={(e) => onUpdateUserRole(u.id, e.target.value)}
-                      className="border border-slate-200 rounded p-1 text-[10px] font-semibold bg-white text-slate-700 focus:outline-none cursor-pointer"
-                    >
-                      {DIRECTORY_ROLES.map((r) => <option key={r.key} value={r.key}>{r.label}</option>)}
-                    </select>
+                    {(() => {
+                      const isSelf = !!currentUserId && u.id === currentUserId;
+                      const isLastAdmin = (u.role as string) === 'ORG_ADMIN' && (orgAdminCounts[u.organizationId] || 0) <= 1;
+                      const locked = isSelf || isLastAdmin;
+                      if (locked) {
+                        return (
+                          <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold text-slate-400" title={isSelf ? 'You cannot change your own role.' : 'Last Organization Admin — promote another admin first.'}>
+                            <Lock className="h-3 w-3" /> {DIRECTORY_ROLES.find((r) => r.key === u.role)?.label || u.role}
+                          </span>
+                        );
+                      }
+                      return (
+                        <select
+                          value={u.role}
+                          onChange={(e) => changeRole(u, e.target.value)}
+                          className="border border-slate-200 rounded p-1 text-[10px] font-semibold bg-white text-slate-700 focus:outline-none cursor-pointer"
+                        >
+                          {DIRECTORY_ROLES.map((r) => <option key={r.key} value={r.key}>{r.label}</option>)}
+                        </select>
+                      );
+                    })()}
                   </td>
                 </tr>
               ))}

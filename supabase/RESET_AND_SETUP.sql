@@ -208,7 +208,7 @@ create table public.voyages (
   "voyageNumber" text not null, "originPort" text, "destinationPort" text, eta text, etd text, etb text,
   "actualEta" text, "actualEtb" text, "actualEtd" text, "cargoType" text, "cargoQuantity" numeric, "cargoStatus" text,
   "loadingSchedule" text, "unloadingSchedule" text, "portAgentId" text, "shipAgentId" text, "protectiveAgentId" text,
-  timeline jsonb not null default '[]', status text,
+  timeline jsonb not null default '[]', "sofEvents" jsonb not null default '[]', status text,
   "organizationId" text not null default 'org-1' references public.organizations(id)
 );
 

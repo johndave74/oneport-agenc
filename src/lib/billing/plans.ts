@@ -23,7 +23,7 @@ export interface Plan {
 // Product modules a plan can unlock (admin/account modules are always on).
 const STARTER_MODULES: ModuleId[] = ['port_calls', 'vessels', 'tasks', 'documents', 'reports'];
 const PROFESSIONAL_MODULES: ModuleId[] = [
-  'port_calls', 'planning', 'vessels', 'tasks', 'crew', 'documents',
+  'port_calls', 'planning', 'vessels', 'tasks', 'documents',
   'expenses', 'invoices', 'tariffs', 'approvals', 'laytime', 'partners', 'agents', 'messages', 'reports',
 ];
 

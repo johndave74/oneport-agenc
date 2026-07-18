@@ -18,7 +18,8 @@ export type ModuleId =
   | 'users' | 'roles' | 'company' | 'audit_logs';
 
 export const MODULES: ModuleId[] = [
-  'dashboard', 'port_calls', 'planning', 'vessels', 'tasks', 'crew',
+  // 'crew' removed from navigation per product decision (Crew Management dropped).
+  'dashboard', 'port_calls', 'planning', 'vessels', 'tasks',
   'documents', 'expenses', 'invoices', 'tariffs', 'approvals', 'laytime',
   'partners', 'agents', 'messages', 'reports', 'notifications', 'settings',
   'users', 'roles', 'company', 'audit_logs',

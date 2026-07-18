@@ -13,29 +13,54 @@ import {
   Briefcase,
   Trash2
 } from 'lucide-react';
-import { Voyage, UserRole, Vessel } from '@/types';
+import { Voyage, UserRole, Vessel, User, Task, Document, Expense, LaytimeCalculation, SOFEvent } from '@/types';
+import StatementOfFacts from './StatementOfFacts';
 
 interface VoyagesViewProps {
   voyages: Voyage[];
   vessels?: Vessel[];
+  users?: User[];
+  tasks?: Task[];
+  documents?: Document[];
+  expenses?: Expense[];
+  laytimeCalculations?: LaytimeCalculation[];
   onAddVoyage: (voyage: Omit<Voyage, 'id'>) => void;
   onAddVessel: (vessel: Omit<Vessel, 'id'>) => Promise<Vessel>;
   onUpdateCargoDetails: (id: string, updates: Partial<Voyage>) => void;
   onDeleteVoyage?: (id: string) => void;
   onToggleTimelineEvent: (voyageId: string, eventIndex: number) => void;
+  setView?: (view: string) => void;
   userRole: UserRole;
 }
+
+const ORG_ROLE_LABEL: Record<string, string> = {
+  PORT_AGENT: 'Port Agent', SHIP_AGENT: 'Ship Agent', PROTECTIVE_AGENT: 'Protective Agent',
+  SUPERVISORY_AGENT: 'Supervisory Agent', ORG_ADMIN: 'Org Admin', FINANCE: 'Finance', OPERATIONS_MANAGER: 'Operations', VIEWER: 'Viewer',
+};
 
 export default function VoyagesView({
   voyages,
   vessels = [],
+  users = [],
+  tasks = [],
+  documents = [],
+  expenses = [],
+  laytimeCalculations = [],
   onAddVoyage,
   onAddVessel,
   onUpdateCargoDetails,
   onDeleteVoyage,
   onToggleTimelineEvent,
+  setView,
   userRole
 }: VoyagesViewProps) {
+  const orgUsers = users.filter((u) => !u.platformRole);
+  const agentName = (id?: string) => (id ? orgUsers.find((u) => u.id === id)?.name || 'Unassigned' : 'Unassigned');
+  const assignAgent = (field: 'portAgentId' | 'shipAgentId' | 'protectiveAgentId', voyageId: string, userId: string) =>
+    onUpdateCargoDetails(voyageId, { [field]: userId || undefined } as Partial<Voyage>);
+  // Anyone but a read-only viewer can operate port calls (permission-model roles
+  // like ORG_ADMIN/OPERATIONS_MANAGER weren't recognised by the old role checks).
+  const canEdit = (userRole as string) !== 'VIEWER';
   const [selectedVoyageId, setSelectedVoyageId] = useState<string>(voyages[0]?.id || '');
   const [showAddModal, setShowAddModal] = useState(false);
   const [isSubmittingVoyage, setIsSubmittingVoyage] = useState(false);
@@ -174,17 +199,20 @@ export default function VoyagesView({
         cargoStatus: cargoStatus || 'Scheduled',
         loadingSchedule: loadingSchedule || 'TBA',
         unloadingSchedule: unloadingSchedule || 'TBA',
-        portAgentId: '11111111-1111-1111-1111-111111111111',
-        shipAgentId: '22222222-2222-2222-2222-222222222222',
-        protectiveAgentId: '33333333-3333-3333-3333-333333333333',
+        // Agents are assigned after creation from real org users (Assignments panel).
+        portAgentId: undefined,
+        shipAgentId: undefined,
+        protectiveAgentId: undefined,
         status: 'Scheduled',
         timeline: [
-          { event: 'Departure from Origin', timestamp: eta, completed: false },
-          { event: 'Mid-voyage Status Check', timestamp: eta, completed: false },
-          { event: 'Pre-Arrival Documents Submitted', timestamp: eta, completed: false },
-          { event: 'Arrival at Pilot Station', timestamp: eta, completed: false },
-          { event: 'Vessel Berthing', timestamp: etd, completed: false },
-          { event: 'Cargo Operations Commencement', timestamp: etd, completed: false }
+          { event: 'Pre-arrival notice', timestamp: eta, completed: false },
+          { event: 'NOR tendered', timestamp: eta, completed: false },
+          { event: 'Pilot on board', timestamp: eta, completed: false },
+          { event: 'All fast / Berthed', timestamp: eta, completed: false },
+          { event: 'Cargo operations commenced', timestamp: eta, completed: false },
+          { event: 'Cargo operations completed', timestamp: etd, completed: false },
+          { event: 'Pilot on board (departure)', timestamp: etd, completed: false },
+          { event: 'Vessel sailed', timestamp: etd, completed: false }
         ]
       };
 
@@ -229,7 +257,7 @@ export default function VoyagesView({
             <Compass className="h-4.5 w-4.5 text-[#6C4CE1]" />
             <span>Active Port Calls ({voyages.length})</span>
           </h3>
-          {(userRole === 'PORT_AGENT' || userRole === 'SHIP_AGENT' || userRole === 'PROTECTIVE_AGENT' || userRole === 'ADMIN') && (
+          {canEdit && (
             <button
               onClick={() => setShowAddModal(true)}
               className="bg-[#6C4CE1] hover:bg-[#6C4CE1]/90 text-white p-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1 transition-colors cursor-pointer"
@@ -295,14 +323,14 @@ export default function VoyagesView({
                     <Ship className="h-5 w-5 text-slate-400" />
                     <span>Port Call: {selectedVoyage.vesselName}</span>
                   </h4>
-                  <p className="text-xs text-slate-500 tabular-nums">Assignees • Port Agent: James Vance • Ship Agent: Sara Tanaka</p>
+                  <p className="text-xs text-slate-500">{selectedVoyage.voyageNumber} · Port Agent: {agentName(selectedVoyage.portAgentId)} · Ship Agent: {agentName(selectedVoyage.shipAgentId)}</p>
                 </div>
                 <div className="flex items-center space-x-2">
                   <span className="text-xs tabular-nums text-slate-400">Status:</span>
                   <span className="bg-[#6C4CE1]/10 text-[#2D1B69] font-bold px-2.5 py-1 rounded-lg text-xs tabular-nums border border-[#6C4CE1]/20">
                     {selectedVoyage.status}
                   </span>
-                  {(userRole === 'PORT_AGENT' || userRole === 'SHIP_AGENT' || userRole === 'PROTECTIVE_AGENT' || userRole === 'ADMIN') && (
+                  {canEdit && (
                     <button
                       onClick={() => setVoyageToDelete({ id: selectedVoyage.id, label: `${selectedVoyage.vesselName} (${selectedVoyage.voyageNumber})` })}
                       className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
@@ -498,6 +526,61 @@ export default function VoyagesView({
               </div>
             </div>
 
+            {/* Agent Assignments */}
+            <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4">
+              <div className="flex items-center space-x-2 pb-3 border-b border-slate-100">
+                <Briefcase className="h-4.5 w-4.5 text-[#6C4CE1]" />
+                <h5 className="text-xs font-bold uppercase tracking-wider text-slate-800">Agent Assignments</h5>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                {([['portAgentId', 'Port Agent'], ['shipAgentId', 'Ship Agent'], ['protectiveAgentId', 'Protective Agent']] as const).map(([field, label]) => (
+                  <div key={field} className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase">{label}</label>
+                    <select
+                      value={(selectedVoyage[field] as string) || ''}
+                      onChange={(e) => assignAgent(field, selectedVoyage.id, e.target.value)}
+                      disabled={!canEdit}
+                      className="w-full border border-slate-200 rounded-lg p-2 bg-white focus:ring-1 focus:ring-[#6C4CE1] focus:outline-none cursor-pointer disabled:bg-slate-50 disabled:cursor-not-allowed"
+                    >
+                      <option value="">— Unassigned —</option>
+                      {orgUsers.map((u) => <option key={u.id} value={u.id}>{u.name}{u.role ? ` · ${ORG_ROLE_LABEL[u.role] || u.role}` : ''}</option>)}
+                    </select>
+                  </div>
+                ))}
+              </div>
+              {orgUsers.length === 0 && <p className="text-[11px] text-amber-600">No team members yet — add users under <strong>Users &amp; Roles</strong> to assign agents.</p>}
+            </div>
+
+            {/* Linked Records */}
+            <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+              <div className="flex items-center space-x-2 pb-3 border-b border-slate-100 mb-3">
+                <Sliders className="h-4.5 w-4.5 text-[#6C4CE1]" />
+                <h5 className="text-xs font-bold uppercase tracking-wider text-slate-800">Linked Records</h5>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {[
+                  { label: 'Tasks', count: tasks.filter(t => t.voyageId === selectedVoyage.id).length, view: 'tasks' },
+                  { label: 'Documents', count: documents.filter(d => d.voyageId === selectedVoyage.id).length, view: 'documents' },
+                  { label: 'Expenses', count: expenses.filter(e => e.voyageId === selectedVoyage.id).length, view: 'expenses' },
+                  { label: 'Laytime', count: laytimeCalculations.filter(l => l.voyageId === selectedVoyage.id).length, view: 'laytime' },
+                ].map((x) => (
+                  <button key={x.label} onClick={() => setView?.(x.view)} className="bg-slate-50 border border-slate-100 rounded-lg p-3 text-left hover:border-[#6C4CE1]/30 hover:bg-white transition-all cursor-pointer">
+                    <span className="text-2xl font-bold text-slate-800 tabular-nums block leading-none">{x.count}</span>
+                    <span className="text-[11px] text-slate-500 mt-1 block">{x.label}</span>
+                  </button>
+                ))}
+              </div>
+              <p className="text-[10px] text-slate-400 mt-3">Counts for this port call. Click to open the module.</p>
+            </div>
+
+            {/* Statement of Facts */}
+            <StatementOfFacts
+              voyage={selectedVoyage}
+              canEdit={canEdit}
+              onSave={(events: SOFEvent[]) => onUpdateCargoDetails(selectedVoyage.id, { sofEvents: events })}
+              setView={setView}
+            />
+
             {/* Cargo Operations Console (Ship Agent features) */}
             <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4">
               <div className="flex justify-between items-center pb-3 border-b border-slate-100">
@@ -505,7 +588,7 @@ export default function VoyagesView({
                   <Database className="h-4.5 w-4.5 text-[#6C4CE1]" />
                   <h5 className="text-xs font-bold uppercase tracking-wider text-slate-800">Cargo & Manifest Declaration</h5>
                 </div>
-                {(userRole === 'SHIP_AGENT' || userRole === 'ADMIN') && (
+                {canEdit && (
                   <button
                     onClick={() => {
                       if (!editCargoMode) {
@@ -628,7 +711,7 @@ export default function VoyagesView({
                       </div>
                       
                       {/* Port Agent, Ship Agent or Admin can toggle milestones */}
-                      {(userRole === 'PORT_AGENT' || userRole === 'SHIP_AGENT' || userRole === 'ADMIN') ? (
+                      {canEdit ? (
                         <button
                           onClick={() => onToggleTimelineEvent(selectedVoyage.id, idx)}
                           className={`px-2 py-1 rounded text-[10px] font-semibold border transition-all cursor-pointer ${

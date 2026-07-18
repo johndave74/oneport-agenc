@@ -37,6 +37,8 @@ import Header from '@/components/layout/Header';
 import PlatformDashboard from '@/features/platform/PlatformDashboard';
 import RolesPermissionsView from '@/features/platform/RolesPermissionsView';
 import PlatformSubscriptionsView from '@/features/platform/PlatformSubscriptionsView';
+import PlatformAnalyticsView from '@/features/platform/PlatformAnalyticsView';
+import PlatformBillingView from '@/features/platform/PlatformBillingView';
 import PlatformModulePlaceholder from '@/features/platform/PlatformModulePlaceholder';
 import UsersManagementView from '@/features/platform/UsersManagementView';
 import { KeyRound, Server, Database, HardDrive, CreditCard, LineChart, Flag, Gauge } from 'lucide-react';
@@ -73,6 +75,17 @@ import ApprovalsView from '@/features/approvals/ApprovalsView';
 // recovery link lands here so we can route the user to set their password.
 const INITIAL_HASH = typeof window !== 'undefined' ? window.location.hash : '';
 const IS_INVITE_LINK = /type=(invite|recovery|signup)/.test(INITIAL_HASH);
+
+// Maps RBAC role keys onto the legacy 4-role model the operational views still
+// use for action-gating. Admin-tier org roles get full edit; agents keep their
+// role; Viewers get a value no legacy check matches, so they stay read-only.
+function effectiveRole(role: string): UserRole {
+  if (role === 'PORT_AGENT') return 'PORT_AGENT';
+  if (role === 'SHIP_AGENT') return 'SHIP_AGENT';
+  if (role === 'PROTECTIVE_AGENT' || role === 'SUPERVISORY_AGENT') return 'PROTECTIVE_AGENT';
+  if (role === 'VIEWER') return 'VIEWER' as UserRole;
+  return 'ADMIN';
+}
 
 export default function App() {
   const [authChecked, setAuthChecked] = useState(false);
@@ -504,13 +517,18 @@ export default function App() {
   const renderMainView = () => {
     if (!currentUser) return null;
 
+    // Legacy operational views gate actions on the original 4 role names. Map the
+    // RBAC roles onto them so Org Admins / Operations users can actually operate,
+    // agents keep their behaviour, and Viewers stay read-only.
+    const viewRole = effectiveRole(currentUser.role);
+
     const allowed = allowedViews(effectivePermissions);
     if (currentUser.isPlatformAdmin) allowed.push('organizations');
     if (can(effectivePermissions, 'company', 'view')) allowed.push('subscription');
     if (!allowed.includes(currentView)) {
       return (
         <DashboardView
-          userRole={currentUser.role}
+          userRole={viewRole}
           userName={currentUser.name}
           currentUserId={currentUser.id}
           vessels={vessels}
@@ -537,13 +555,13 @@ export default function App() {
 
     switch (currentView) {
       case 'planning': return <PlanningCenterView vessels={vessels} voyages={voyages} tasks={tasks} users={users} />;
-      case 'dashboard': return <DashboardView userRole={currentUser.role} userName={currentUser.name} currentUserId={currentUser.id} vessels={vessels} voyages={voyages} tasks={tasks} expenses={expenses} incidents={incidents} users={users} laytimeCalculations={laytimeCalculations} invoices={invoices} partners={partners} crewMembers={crewMembers} auditLogs={auditLogs} notifications={notifications} onCompleteTask={handleCompleteTask} onApproveExpense={handleApproveExpense} onRejectExpense={handleRejectExpense} onCreateIncident={handleCreateIncident} onMarkAllNotificationsRead={handleMarkAllNotificationsRead} setView={setView} />;
-      case 'vessels': return <VesselsView vessels={vessels} users={users} onAddVessel={handleAddVessel} onEditVessel={handleEditVessel} onDeleteVessel={handleDeleteVessel} onUpdateVesselStatus={handleUpdateVesselStatus} userRole={currentUser.role} />;
-      case 'voyages': return <VoyagesView voyages={voyages} vessels={vessels} onAddVoyage={handleAddVoyage} onAddVessel={handleAddVessel} onUpdateCargoDetails={handleUpdateCargoDetails} onDeleteVoyage={handleDeleteVoyage} onToggleTimelineEvent={handleToggleTimelineEvent} userRole={currentUser.role} />;
-      case 'tasks': return <TasksView tasks={tasks} voyages={voyages} onAddTask={handleAddTask} onUpdateTaskStatus={handleUpdateTaskStatus} userRole={currentUser.role} />;
+      case 'dashboard': return <DashboardView userRole={viewRole} userName={currentUser.name} currentUserId={currentUser.id} vessels={vessels} voyages={voyages} tasks={tasks} expenses={expenses} incidents={incidents} users={users} laytimeCalculations={laytimeCalculations} invoices={invoices} partners={partners} crewMembers={crewMembers} auditLogs={auditLogs} notifications={notifications} onCompleteTask={handleCompleteTask} onApproveExpense={handleApproveExpense} onRejectExpense={handleRejectExpense} onCreateIncident={handleCreateIncident} onMarkAllNotificationsRead={handleMarkAllNotificationsRead} setView={setView} />;
+      case 'vessels': return <VesselsView vessels={vessels} users={users} onAddVessel={handleAddVessel} onEditVessel={handleEditVessel} onDeleteVessel={handleDeleteVessel} onUpdateVesselStatus={handleUpdateVesselStatus} userRole={viewRole} />;
+      case 'voyages': return <VoyagesView voyages={voyages} vessels={vessels} users={users} tasks={tasks} documents={documents} expenses={expenses} laytimeCalculations={laytimeCalculations} onAddVoyage={handleAddVoyage} onAddVessel={handleAddVessel} onUpdateCargoDetails={handleUpdateCargoDetails} onDeleteVoyage={handleDeleteVoyage} onToggleTimelineEvent={handleToggleTimelineEvent} setView={setView} userRole={viewRole} />;
+      case 'tasks': return <TasksView tasks={tasks} voyages={voyages} onAddTask={handleAddTask} onUpdateTaskStatus={handleUpdateTaskStatus} userRole={viewRole} />;
       case 'documents': return <DocumentsView documents={documents} voyages={voyages} onUploadDocument={handleUploadDocument} onDeleteDocument={handleDeleteDocument} userName={currentUser.name} />;
-      case 'expenses': return <ExpensesView expenses={expenses} voyages={voyages} documents={documents} onUploadDocument={handleUploadDocument} onDeleteDocument={handleDeleteDocument} onAddExpense={handleAddExpense} onApproveExpense={handleApproveExpense} onRejectExpense={handleRejectExpense} userRole={currentUser.role} userName={currentUser.name} />;
-      case 'messages': return <MessagesView messages={messages} voyages={voyages} onSendMessage={handleSendMessage} userRole={currentUser.role} userName={currentUser.name} />;
+      case 'expenses': return <ExpensesView expenses={expenses} voyages={voyages} documents={documents} onUploadDocument={handleUploadDocument} onDeleteDocument={handleDeleteDocument} onAddExpense={handleAddExpense} onApproveExpense={handleApproveExpense} onRejectExpense={handleRejectExpense} userRole={viewRole} userName={currentUser.name} />;
+      case 'messages': return <MessagesView messages={messages} voyages={voyages} onSendMessage={handleSendMessage} userRole={viewRole} userName={currentUser.name} />;
       case 'crm': return <CrmView users={users} vessels={vessels} currentUser={currentUser} onSendMessage={handleSendMessage} onUpdateVessel={handleEditVessel} onAddNotification={handleAddNotification} onAddAuditLog={handleAddAuditLog} />;
       case 'crew': return <CrewView crewMembers={crewMembers} vessels={vessels} onAddCrewMember={handleAddCrewMember} onEditCrewMember={handleEditCrewMember} onDeleteCrewMember={handleDeleteCrewMember} />;
       case 'partners': return <PartnersView partners={partners} onAddPartner={handleAddPartner} onEditPartner={handleEditPartner} onDeletePartner={handleDeletePartner} />;
@@ -557,7 +575,7 @@ export default function App() {
       case 'company': return <CompanySettingsView userRole={currentUser.role} org={org} onUpdateOrg={handleUpdateOrg} />;
       case 'subscription': return <SubscriptionView org={org} userCount={users.filter(u => !u.platformRole).length} />;
       case 'organizations': return <OrganizationsView organizations={organizations} users={users} currentOrgId={currentUser.organizationId} onCreateOrganization={handleAddOrganization} onUpdateOrganization={handleUpdateOrganization} onDeleteOrganization={handleDeleteOrganization} />;
-      case 'admin': return <AdminView users={users} auditLogs={auditLogs} onUpdateUserRole={handleUpdateUserRole} initialTab="users" />;
+      case 'admin': return <AdminView users={users} auditLogs={auditLogs} onUpdateUserRole={handleUpdateUserRole} initialTab="users" currentUserId={currentUser.id} />;
       case 'auditlogs': return <AdminView users={users} auditLogs={auditLogs} onUpdateUserRole={handleUpdateUserRole} initialTab="auditlogs" />;
       default: return <div className="p-8 text-center text-slate-500 text-xs">Operational module "{currentView}" under system maintenance.</div>;
     }
@@ -585,9 +603,9 @@ export default function App() {
       case 'subscriptions':
         return <PlatformSubscriptionsView organizations={organizations} users={users} onUpdateOrganization={handleUpdateOrganization} />;
       case 'analytics':
-        return <PlatformModulePlaceholder icon={LineChart} title="Platform Analytics" description="Growth and usage across all customer organizations." bullets={['Organization & user growth', 'Daily active users', 'Feature adoption', 'Most active organizations', 'Retention & churn', 'API usage trends']} note="Organization growth already charts on the Dashboard." />;
+        return <PlatformAnalyticsView organizations={organizations} users={users} auditLogs={auditLogs} />;
       case 'billing':
-        return <PlatformModulePlaceholder icon={CreditCard} title="Billing" description="Invoicing and payments for customer subscriptions." bullets={['Invoices & receipts per organization', 'Payment methods', 'Transaction history', 'Refunds & credits', 'Dunning / past-due status', 'Tax & currency settings']} />;
+        return <PlatformBillingView organizations={organizations} setView={setView} />;
       case 'svc-auth':
         return <PlatformModulePlaceholder icon={KeyRound} title="Authentication" description="Monitor sign-ins, sessions and identity across the platform." bullets={['Sign-in activity & active sessions', 'Identity providers (email, OAuth)', 'Password & MFA policies', 'Failed-login monitoring', 'Locked / suspended accounts', 'Recent logins by organization']} note="Authentication events already flow into Audit Logs today." />;
       case 'svc-api':

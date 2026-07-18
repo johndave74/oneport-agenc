@@ -134,6 +134,7 @@ export interface Voyage {
     timestamp: string;
     completed: boolean;
   }[];
+  sofEvents?: SOFEvent[];
   status: string;
 }
 
