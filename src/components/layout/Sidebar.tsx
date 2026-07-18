@@ -24,10 +24,11 @@ import {
   Activity,
   ChevronDown,
   Globe,
+  CreditCard,
   LucideIcon,
 } from 'lucide-react';
 import { UserRole } from '@/types';
-import { Permission, navFromPermissions, can, ModuleId } from '@/lib/rbac/permissions';
+import { Permission, navFromPermissions, can } from '@/lib/rbac/permissions';
 
 interface SidebarProps {
   currentView: string;
@@ -36,6 +37,7 @@ interface SidebarProps {
   userName: string;
   permissions: Set<Permission>;
   isPlatformAdmin?: boolean;
+  enabledModules?: string[] | null; // subscription gating; null = all enabled
   onLogout: () => void;
   isOpen?: boolean;
   onClose?: () => void;
@@ -74,15 +76,29 @@ const VIEW_ICON: Record<string, LucideIcon> = {
   admin: ShieldAlert,
   company: Building2,
   auditlogs: Activity,
+  subscription: CreditCard,
 };
 
-export default function Sidebar({ currentView, setView, userRole, userName, permissions, isPlatformAdmin = false, onLogout, isOpen = false, onClose }: SidebarProps) {
+export default function Sidebar({ currentView, setView, userRole, userName, permissions, isPlatformAdmin = false, enabledModules = null, onLogout, isOpen = false, onClose }: SidebarProps) {
   const handleItemClick = (viewId: string) => {
     setView(viewId);
     if (onClose) onClose();
   };
 
-  const groups = navFromPermissions(permissions);
+  const gate = enabledModules && enabledModules.length > 0 ? new Set(enabledModules) : null;
+  // Subscription gating applies only to product groups — never to Administration/Account.
+  const PRODUCT_GROUPS = new Set(['Operations', 'Commercial', 'Marine Operations', 'Documents & Partners', 'Reports & Analytics']);
+  const groups = navFromPermissions(permissions)
+    .map((g) => ({ ...g, items: gate && PRODUCT_GROUPS.has(g.title) ? g.items.filter((i) => gate.has(i.module)) : g.items }))
+    .filter((g) => g.items.length > 0);
+
+  // Subscription (read-only) lives in Administration for org admins.
+  if (can(permissions, 'company', 'view')) {
+    const admin = groups.find((g) => g.title === 'Administration');
+    const item = { view: 'subscription', label: 'Subscription', module: 'company' as const };
+    if (admin) admin.items.push(item);
+    else groups.push({ title: 'Administration', items: [item] });
+  }
 
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const toggle = (title: string) => setCollapsed((c) => ({ ...c, [title]: !c[title] }));

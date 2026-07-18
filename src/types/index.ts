@@ -15,7 +15,12 @@ export interface User {
   roleId?: string | null;
   isPlatformAdmin?: boolean;
   accountStatus?: string;
+  platformRole?: string | null;      // set => Platform Team member
+  platformDepartment?: string | null;
 }
+
+// Two platform roles only: the unique root Owner, and Staff (OnePort employees).
+export type PlatformRoleKey = 'PLATFORM_OWNER' | 'PLATFORM_STAFF';
 
 export interface Organization {
   id: string;
@@ -25,6 +30,11 @@ export interface Organization {
   slug?: string;
   status?: string;
   createdAt?: string;
+  isPlatform?: boolean; // true = OnePort Agency (the SaaS vendor), not a customer
+  plan?: string;
+  planStatus?: string;
+  planExpiry?: string | null;
+  enabledModules?: string[] | null; // null = all modules enabled
 }
 
 // ---- Phase 2: RBAC + multi-tenant (additive; not yet wired into runtime) ----
@@ -36,6 +46,7 @@ export type RoleKey =
   | 'PORT_AGENT'
   | 'SHIP_AGENT'
   | 'PROTECTIVE_AGENT'
+  | 'SUPERVISORY_AGENT'
   | 'FINANCE'
   | 'DOCUMENTATION'
   | 'VIEWER';

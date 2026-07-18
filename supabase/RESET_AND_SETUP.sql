@@ -57,6 +57,11 @@ create table public.organizations (
   "licenseId" text,
   slug text,
   status text not null default 'active',
+  "isPlatform" boolean not null default false,   -- true = OnePort Agency (the SaaS vendor)
+  plan text not null default 'Professional',
+  "planStatus" text not null default 'active',
+  "planExpiry" text,
+  "enabledModules" text[],                        -- null = all modules enabled
   "createdAt" timestamptz not null default now()
 );
 
@@ -69,11 +74,13 @@ create table public.users (
   email text not null,
   role text not null default 'VIEWER' check (role in (
     'PLATFORM_SUPER_ADMIN','ORG_ADMIN','OPERATIONS_MANAGER','PORT_AGENT','SHIP_AGENT',
-    'PROTECTIVE_AGENT','FINANCE','DOCUMENTATION','VIEWER'
+    'PROTECTIVE_AGENT','SUPERVISORY_AGENT','FINANCE','DOCUMENTATION','VIEWER'
   )),
   "organizationId" text not null default 'org-1' references public.organizations(id),
   "roleId" text,
   "isPlatformAdmin" boolean not null default false,
+  "platformRole" text,
+  "platformDepartment" text,
   "accountStatus" text not null default 'active',
   rating numeric,
   "completedTurnarounds" integer default 0,
@@ -129,6 +136,7 @@ insert into public.roles (id, key, name, description, "isSystem", "organizationI
   ('role-port-agent',           'PORT_AGENT',           'Port Agent',            'Manages port calls, vessels, tasks and documents.', true, null),
   ('role-ship-agent',           'SHIP_AGENT',           'Ship Agent',            'Manages port calls, laytime and disbursements.', true, null),
   ('role-protective-agent',     'PROTECTIVE_AGENT',     'Protective Agent',      'Oversees incidents, risk and cost audits.', true, null),
+  ('role-supervisory-agent',    'SUPERVISORY_AGENT',    'Supervisory Agent',     'Operational oversight on behalf of the owner/charterer.', true, null),
   ('role-finance',              'FINANCE',              'Finance Officer',       'Invoices, disbursements, tariffs and approvals.', true, null),
   ('role-documentation',        'DOCUMENTATION',        'Documentation Officer', 'Documents, clearances and filings.', true, null),
   ('role-viewer',               'VIEWER',               'Viewer',                'Read-only access to operational data.', true, null);
@@ -151,6 +159,7 @@ declare
     "role-port-agent":       {"view":["dashboard","port_calls","planning","vessels","tasks","crew","documents","expenses","invoices","tariffs","approvals","partners","agents","messages","reports","notifications","settings"],"create":["port_calls","vessels","tasks","documents","expenses","invoices"],"edit":["port_calls","vessels","tasks","documents"],"delete":["tasks"]},
     "role-ship-agent":       {"view":["dashboard","port_calls","planning","vessels","crew","documents","expenses","invoices","tariffs","approvals","laytime","partners","agents","messages","reports","notifications","settings"],"create":["port_calls","expenses","invoices","laytime"],"edit":["port_calls","laytime","expenses"]},
     "role-protective-agent": {"view":["dashboard","port_calls","planning","vessels","tasks","crew","documents","expenses","invoices","tariffs","approvals","partners","agents","messages","reports","notifications","settings"],"create":["tasks"],"edit":["tasks"],"approve":["expenses"]},
+    "role-supervisory-agent": {"view":["dashboard","port_calls","planning","vessels","tasks","crew","documents","expenses","invoices","tariffs","approvals","partners","agents","messages","reports","notifications","settings"]},
     "role-finance":          {"view":["dashboard","port_calls","expenses","invoices","tariffs","approvals","partners","reports","notifications","settings"],"create":["invoices","tariffs","expenses"],"edit":["invoices","tariffs","expenses"],"approve":["expenses","invoices"]},
     "role-documentation":    {"view":["dashboard","port_calls","vessels","crew","documents","partners","agents","messages","reports","notifications","settings"],"create":["documents"],"edit":["documents"],"delete":["documents"]}
   }'::jsonb;
@@ -316,12 +325,14 @@ begin
   v_org := coalesce(new.raw_user_meta_data->>'organizationId', 'org-1');
   v_role_key := coalesce(new.raw_user_meta_data->>'role', 'VIEWER');
   select id into v_role_id from public.roles where key = v_role_key and "organizationId" is null limit 1;
-  insert into public.users (id, name, email, role, "organizationId", "roleId", "isPlatformAdmin")
+  insert into public.users (id, name, email, role, "organizationId", "roleId", "isPlatformAdmin", "platformRole", "platformDepartment")
   values (
     new.id,
     coalesce(new.raw_user_meta_data->>'name', split_part(new.email, '@', 1)),
     new.email, v_role_key, v_org, v_role_id,
-    coalesce((new.raw_user_meta_data->>'isPlatformAdmin')::boolean, false)
+    coalesce((new.raw_user_meta_data->>'isPlatformAdmin')::boolean, false),
+    new.raw_user_meta_data->>'platformRole',
+    new.raw_user_meta_data->>'platformDepartment'
   );
   return new;
 end $$;
@@ -339,6 +350,52 @@ begin
     execute format('create trigger set_org_id_trg before insert on public.%I for each row execute function public.set_org_id()', t);
   end loop;
 end $$;
+
+-- ============================================================
+-- STEP 6b — Platform Owner protection (unique root account)
+-- ============================================================
+create unique index if not exists one_platform_owner
+  on public.users ("platformRole") where "platformRole" = 'PLATFORM_OWNER';
+
+create or replace function public.protect_platform_owner()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare bypass boolean := coalesce(current_setting('app.allow_owner_change', true) = '1', false);
+begin
+  if tg_op = 'DELETE' then
+    if old."platformRole" = 'PLATFORM_OWNER' and not bypass then
+      raise exception 'Platform Owner cannot be deleted. Transfer ownership first.';
+    end if;
+    return old;
+  end if;
+  if old."platformRole" = 'PLATFORM_OWNER' and not bypass then
+    if new."platformRole" is distinct from 'PLATFORM_OWNER' then raise exception 'Platform Owner role cannot be changed. Transfer ownership first.'; end if;
+    if coalesce(new."accountStatus", 'active') <> 'active' then raise exception 'Platform Owner cannot be suspended or deactivated.'; end if;
+    if new."isPlatformAdmin" is distinct from true then raise exception 'Platform Owner cannot be demoted.'; end if;
+  end if;
+  return new;
+end $$;
+
+drop trigger if exists protect_owner_trg on public.users;
+create trigger protect_owner_trg before update or delete on public.users
+  for each row execute function public.protect_platform_owner();
+
+create or replace function public.transfer_platform_ownership(new_owner uuid)
+returns void language plpgsql security definer set search_path = public as $$
+declare current_owner uuid;
+begin
+  select id into current_owner from public.users where "platformRole" = 'PLATFORM_OWNER';
+  if current_owner is null then raise exception 'There is no current Platform Owner.'; end if;
+  if new_owner = current_owner then raise exception 'Choose a different user to transfer ownership to.'; end if;
+  if (select "platformRole" from public.users where id = new_owner) is distinct from 'PLATFORM_STAFF' then
+    raise exception 'Ownership can only be transferred to a Platform Staff member.';
+  end if;
+  perform set_config('app.allow_owner_change', '1', true);
+  update public.users set "platformRole" = 'PLATFORM_STAFF', "isPlatformAdmin" = false where id = current_owner;
+  update public.users set "platformRole" = 'PLATFORM_OWNER',  "isPlatformAdmin" = true  where id = new_owner;
+  perform set_config('app.allow_owner_change', '0', true);
+end $$;
+
+revoke all on function public.transfer_platform_ownership(uuid) from public, anon, authenticated;
 
 -- ============================================================
 -- STEP 7 — Row-Level Security
@@ -388,7 +445,9 @@ create policy "org invitations" on public.invitations for all
 -- ============================================================
 -- STEP 8 — Your first organization
 -- ============================================================
-insert into public.organizations (id, "companyName", slug) values ('org-1', 'OnePort Agency', 'oneport-agency');
+-- org-1 is OnePort Agency, the SaaS vendor (platform company) — NOT a customer.
+insert into public.organizations (id, "companyName", slug, "isPlatform", plan, "planStatus")
+values ('org-1', 'OnePort Agency', 'oneport-agency', true, 'Platform', 'internal');
 
 -- ============================================================
 -- STEP 9 — Your admin login  ←←← CHANGE THE 3 VALUES BELOW
@@ -408,7 +467,7 @@ begin
     '00000000-0000-0000-0000-000000000000', v_uid, 'authenticated', 'authenticated',
     lower(v_email), crypt(v_password, gen_salt('bf')), now(),
     '{"provider":"email","providers":["email"]}',
-    jsonb_build_object('name', v_name, 'role', 'PLATFORM_SUPER_ADMIN', 'organizationId', 'org-1', 'isPlatformAdmin', true),
+    jsonb_build_object('name', v_name, 'role', 'PLATFORM_SUPER_ADMIN', 'organizationId', 'org-1', 'isPlatformAdmin', true, 'platformRole', 'PLATFORM_OWNER'),
     now(), now(), '', '', '', ''
   );
   insert into auth.identities (id, provider_id, user_id, identity_data, provider, last_sign_in_at, created_at, updated_at)

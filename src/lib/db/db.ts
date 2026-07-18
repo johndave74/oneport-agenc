@@ -28,10 +28,11 @@ function unwrap<T>({ data, error }: { data: T | null; error: { message: string }
 
 export const Db = {
   // ---------------------------------------------------------------- Org
-  async getOrg(): Promise<Organization> {
-    const { data, error } = await supabase.from('organizations').select('*').eq('id', 'org-1').maybeSingle();
+  // Active organization = the authenticated user's organization. Never hardcode.
+  async getOrg(orgId: string): Promise<Organization> {
+    const { data, error } = await supabase.from('organizations').select('*').eq('id', orgId).maybeSingle();
     if (error) throw new Error(error.message);
-    return data ?? { id: 'org-1', companyName: 'Oneport Agenc' };
+    return data ?? { id: orgId, companyName: '' };
   },
 
   async setOrg(org: Organization): Promise<Organization> {
@@ -44,9 +45,9 @@ export const Db = {
     return unwrap(res as any);
   },
 
-  async addOrganization(input: { companyName: string; address?: string; licenseId?: string }): Promise<Organization> {
+  async addOrganization(input: { companyName: string; address?: string; licenseId?: string; plan?: string; planStatus?: string; planExpiry?: string | null; enabledModules?: string[] | null }): Promise<Organization> {
     const slug = input.companyName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-    const item = {
+    const item: Record<string, unknown> = {
       id: `org-${Date.now()}`,
       companyName: input.companyName,
       address: input.address || null,
@@ -54,11 +55,15 @@ export const Db = {
       slug,
       status: 'active',
     };
+    if (input.plan !== undefined) item.plan = input.plan;
+    if (input.planStatus !== undefined) item.planStatus = input.planStatus;
+    if (input.planExpiry !== undefined) item.planExpiry = input.planExpiry;
+    if (input.enabledModules !== undefined) item.enabledModules = input.enabledModules;
     const res = await supabase.from('organizations').insert(item).select().single();
     return unwrap(res as any);
   },
 
-  async updateOrganization(id: string, updates: { companyName?: string; address?: string; licenseId?: string; status?: string }): Promise<Organization> {
+  async updateOrganization(id: string, updates: { companyName?: string; address?: string; licenseId?: string; status?: string; plan?: string; planStatus?: string; planExpiry?: string | null; enabledModules?: string[] | null }): Promise<Organization> {
     const res = await supabase.from('organizations').update(updates).eq('id', id).select().single();
     return unwrap(res as any);
   },
@@ -84,6 +89,11 @@ export const Db = {
 
   async updateProfile(userId: string, updates: Partial<Pick<User, 'name' | 'email'>>): Promise<User> {
     const res = await supabase.from('users').update(updates).eq('id', userId).select().single();
+    return unwrap(res as any);
+  },
+
+  async updateAccountStatus(userId: string, status: string): Promise<User> {
+    const res = await supabase.from('users').update({ accountStatus: status }).eq('id', userId).select().single();
     return unwrap(res as any);
   },
 

@@ -27,12 +27,19 @@ import {
 import { computeCommandKpis } from '@/features/dashboard/kpis';
 import { computeRuleFindings } from '@/features/dashboard/aiRulesEngine';
 import { loadPermissions } from '@/lib/rbac/session';
-import { Permission, allowedViews, defaultPermissionsForRole } from '@/lib/rbac/permissions';
+import { Permission, allowedViews, defaultPermissionsForRole, can } from '@/lib/rbac/permissions';
 import { RoleKey } from '@/types';
 
 // Component imports
 import Sidebar from '@/components/layout/Sidebar';
+import PlatformSidebar from '@/components/layout/PlatformSidebar';
 import Header from '@/components/layout/Header';
+import PlatformDashboard from '@/features/platform/PlatformDashboard';
+import RolesPermissionsView from '@/features/platform/RolesPermissionsView';
+import PlatformSubscriptionsView from '@/features/platform/PlatformSubscriptionsView';
+import PlatformModulePlaceholder from '@/features/platform/PlatformModulePlaceholder';
+import UsersManagementView from '@/features/platform/UsersManagementView';
+import { KeyRound, Server, Database, HardDrive, CreditCard, LineChart, Flag, Gauge } from 'lucide-react';
 import CommandPalette from '@/components/layout/CommandPalette';
 import DashboardView from '@/features/dashboard/DashboardView';
 import PlanningCenterView from '@/features/planning/PlanningCenterView';
@@ -46,11 +53,14 @@ import ReportsView from '@/features/reports/ReportsView';
 import NotificationsView from '@/features/notifications/NotificationsView';
 import SettingsView from '@/features/settings/SettingsView';
 import CompanySettingsView from '@/features/settings/CompanySettingsView';
+import SubscriptionView from '@/features/settings/SubscriptionView';
 import AdminView from '@/features/admin/AdminView';
 import OrganizationsView from '@/features/admin/OrganizationsView';
 import AuthView from '@/features/auth/AuthView';
 import AcceptInviteView from '@/features/auth/AcceptInviteView';
+import WorkspaceLockedView from '@/features/auth/WorkspaceLockedView';
 import LandingView from '@/features/auth/LandingView';
+import { workspaceAccess } from '@/lib/billing/plans';
 import LaytimeCalculatorView from '@/features/laytime/LaytimeCalculatorView';
 import CrmView from '@/features/crm/CrmView';
 import CrewView from '@/features/crew/CrewView';
@@ -115,7 +125,7 @@ export default function App() {
     setPermissions(new Set());
   };
 
-  const loadWorkspaceData = useCallback(async () => {
+  const loadWorkspaceData = useCallback(async (activeOrgId: string = 'org-1') => {
     const [
       usersData, vesselsData, voyagesData, tasksData, documentsData,
       expensesData, messagesData, notificationsData, incidentsData, auditLogsData,
@@ -124,7 +134,7 @@ export default function App() {
     ] = await Promise.all([
       Db.getUsers(), Db.getVessels(), Db.getVoyages(), Db.getTasks(), Db.getDocuments(),
       Db.getExpenses(), Db.getMessages(), Db.getNotifications(), Db.getIncidents(), Db.getAuditLogs(),
-      Db.getLaytimeCalculations(), Db.getOrg(), Db.getPartners(), Db.getCrewMembers(), Db.getTariffs(), Db.getInvoices(),
+      Db.getLaytimeCalculations(), Db.getOrg(activeOrgId), Db.getPartners(), Db.getCrewMembers(), Db.getTariffs(), Db.getInvoices(),
       Db.getOrganizations()
     ]);
     setUsers(usersData);
@@ -156,7 +166,7 @@ export default function App() {
         if (!active) return;
         if (user) {
           setCurrentUser(user);
-          await loadWorkspaceData();
+          await loadWorkspaceData(user.organizationId);
           loadPermissions(user).then((p) => { if (active) setPermissions(p); }).catch(() => {});
         }
       } catch (err) {
@@ -205,7 +215,7 @@ export default function App() {
 
   const handleLoginSuccess = async (user: User) => {
     setCurrentUser(user);
-    await loadWorkspaceData();
+    await loadWorkspaceData(user.organizationId);
     loadPermissions(user).then(setPermissions).catch(() => {});
     const log = await Db.addAuditLog(user.id, user.name, 'Gateway Session Authenticated', `Successfully authenticated into the centralized database with role ${user.role}.`);
     setAuditLogs(prev => [log, ...prev]);
@@ -357,7 +367,8 @@ export default function App() {
 
   const handleUpdateOrg = async (updates: { companyName: string; address: string; licenseId: string }) => {
     if (!currentUser) return;
-    const updated = await Db.setOrg({ id: 'org-1', ...updates });
+    // Save to the authenticated user's organization — never a hardcoded id.
+    const updated = await Db.setOrg({ id: currentUser.organizationId, ...updates });
     setOrgState(updated);
   };
 
@@ -367,13 +378,18 @@ export default function App() {
     setUsers(prev => prev.map(u => u.id === userId ? updated : u));
   };
 
-  const handleAddOrganization = async (input: { companyName: string; address?: string; licenseId?: string }): Promise<Organization> => {
+  const handleUpdateAccountStatus = async (userId: string, status: string): Promise<void> => {
+    const updated = await Db.updateAccountStatus(userId, status);
+    setUsers(prev => prev.map(u => u.id === userId ? updated : u));
+  };
+
+  const handleAddOrganization = async (input: { companyName: string; address?: string; licenseId?: string; plan?: string; planStatus?: string; planExpiry?: string | null; enabledModules?: string[] | null }): Promise<Organization> => {
     const item = await Db.addOrganization(input);
     setOrganizations(prev => [...prev, item]);
     return item;
   };
 
-  const handleUpdateOrganization = async (id: string, updates: { companyName?: string; address?: string; licenseId?: string; status?: string }): Promise<Organization> => {
+  const handleUpdateOrganization = async (id: string, updates: { companyName?: string; address?: string; licenseId?: string; status?: string; plan?: string; planStatus?: string; planExpiry?: string | null; enabledModules?: string[] | null }): Promise<Organization> => {
     const updated = await Db.updateOrganization(id, updates);
     setOrganizations(prev => prev.map(o => o.id === id ? updated : o));
     return updated;
@@ -490,6 +506,7 @@ export default function App() {
 
     const allowed = allowedViews(effectivePermissions);
     if (currentUser.isPlatformAdmin) allowed.push('organizations');
+    if (can(effectivePermissions, 'company', 'view')) allowed.push('subscription');
     if (!allowed.includes(currentView)) {
       return (
         <DashboardView
@@ -534,14 +551,58 @@ export default function App() {
       case 'invoices': return <InvoicesView invoices={invoices} voyages={voyages} partners={partners} onAddInvoice={handleAddInvoice} onUpdateInvoiceStatus={handleUpdateInvoiceStatus} onDeleteInvoice={handleDeleteInvoice} userName={currentUser.name} />;
       case 'approvals': return <ApprovalsView expenses={expenses} incidents={incidents} onApproveExpense={handleApproveExpense} onRejectExpense={handleRejectExpense} userRole={currentUser.role} />;
       case 'reports': return <ReportsView vessels={vessels} voyages={voyages} incidents={incidents} expenses={expenses} />;
-      case 'laytime': return <LaytimeCalculatorView currentUser={currentUser} />;
+      case 'laytime': return <LaytimeCalculatorView currentUser={currentUser} orgName={org.companyName} />;
       case 'notifications': return <NotificationsView notifications={notifications} onMarkRead={handleMarkNotificationRead} onClearAll={handleMarkAllNotificationsRead} userRole={currentUser.role} />;
       case 'settings': return <SettingsView userName={currentUser.name} userEmail={currentUser.email} userRole={currentUser.role} onUpdateProfile={handleUpdateProfile} />;
       case 'company': return <CompanySettingsView userRole={currentUser.role} org={org} onUpdateOrg={handleUpdateOrg} />;
+      case 'subscription': return <SubscriptionView org={org} userCount={users.filter(u => !u.platformRole).length} />;
       case 'organizations': return <OrganizationsView organizations={organizations} users={users} currentOrgId={currentUser.organizationId} onCreateOrganization={handleAddOrganization} onUpdateOrganization={handleUpdateOrganization} onDeleteOrganization={handleDeleteOrganization} />;
       case 'admin': return <AdminView users={users} auditLogs={auditLogs} onUpdateUserRole={handleUpdateUserRole} initialTab="users" />;
       case 'auditlogs': return <AdminView users={users} auditLogs={auditLogs} onUpdateUserRole={handleUpdateUserRole} initialTab="auditlogs" />;
       default: return <div className="p-8 text-center text-slate-500 text-xs">Operational module "{currentView}" under system maintenance.</div>;
+    }
+  };
+
+  // Platform Admin sees a completely separate console — no vessel/operations pages.
+  const renderPlatformView = () => {
+    if (!currentUser) return null;
+    switch (currentView) {
+      case 'organizations':
+        return <OrganizationsView organizations={organizations} users={users} currentOrgId={currentUser.organizationId} onCreateOrganization={handleAddOrganization} onUpdateOrganization={handleUpdateOrganization} onDeleteOrganization={handleDeleteOrganization} />;
+      case 'platform-team':
+        return <UsersManagementView scope="platform" users={users} organizations={organizations} auditLogs={auditLogs} currentUserId={currentUser.id} currentUserIsOwner={currentUser.platformRole === 'PLATFORM_OWNER'} onUpdateUserRole={handleUpdateUserRole} onUpdateAccountStatus={handleUpdateAccountStatus} onRefresh={loadWorkspaceData} />;
+      case 'orgusers':
+      case 'users':
+        return <UsersManagementView scope="organization" users={users} organizations={organizations} auditLogs={auditLogs} currentUserId={currentUser.id} onUpdateUserRole={handleUpdateUserRole} onUpdateAccountStatus={handleUpdateAccountStatus} onRefresh={loadWorkspaceData} />;
+      case 'roles':
+        return <RolesPermissionsView />;
+      case 'auditlogs':
+        return <AdminView users={users} auditLogs={auditLogs} onUpdateUserRole={handleUpdateUserRole} initialTab="auditlogs" />;
+      case 'notifications':
+        return <NotificationsView notifications={notifications} onMarkRead={handleMarkNotificationRead} onClearAll={handleMarkAllNotificationsRead} userRole={currentUser.role} />;
+      case 'settings':
+        return <SettingsView userName={currentUser.name} userEmail={currentUser.email} userRole={currentUser.role} onUpdateProfile={handleUpdateProfile} />;
+      case 'subscriptions':
+        return <PlatformSubscriptionsView organizations={organizations} users={users} onUpdateOrganization={handleUpdateOrganization} />;
+      case 'analytics':
+        return <PlatformModulePlaceholder icon={LineChart} title="Platform Analytics" description="Growth and usage across all customer organizations." bullets={['Organization & user growth', 'Daily active users', 'Feature adoption', 'Most active organizations', 'Retention & churn', 'API usage trends']} note="Organization growth already charts on the Dashboard." />;
+      case 'billing':
+        return <PlatformModulePlaceholder icon={CreditCard} title="Billing" description="Invoicing and payments for customer subscriptions." bullets={['Invoices & receipts per organization', 'Payment methods', 'Transaction history', 'Refunds & credits', 'Dunning / past-due status', 'Tax & currency settings']} />;
+      case 'svc-auth':
+        return <PlatformModulePlaceholder icon={KeyRound} title="Authentication" description="Monitor sign-ins, sessions and identity across the platform." bullets={['Sign-in activity & active sessions', 'Identity providers (email, OAuth)', 'Password & MFA policies', 'Failed-login monitoring', 'Locked / suspended accounts', 'Recent logins by organization']} note="Authentication events already flow into Audit Logs today." />;
+      case 'svc-api':
+        return <PlatformModulePlaceholder icon={Server} title="API & Edge Functions" description="Health and usage of the platform API and Edge Functions." bullets={['Edge Function deploys & status', 'Request volume & error rates', 'Latency percentiles', 'Rate limits & throttling', 'Recent invocations', 'Function logs']} note="The admin Edge Function powering user & org management is live." />;
+      case 'svc-db':
+        return <PlatformModulePlaceholder icon={Database} title="Database" description="Supabase Postgres health and usage." bullets={['Database size & growth', 'Table row counts', 'Slow-query insights', 'Connection pool status', 'Backups & point-in-time recovery', 'Row-Level Security overview']} note="Live metrics connect via the Supabase management API in a later phase." />;
+      case 'svc-storage':
+        return <PlatformModulePlaceholder icon={HardDrive} title="Storage" description="File storage buckets and usage across organizations." bullets={['Buckets & object counts', 'Storage used per organization', 'Upload / download activity', 'Access policies', 'Large-file report', 'Retention rules']} />;
+      case 'feature-flags':
+        return <PlatformModulePlaceholder icon={Flag} title="Feature Flags" description="Roll features out per organization or globally." bullets={['Global feature toggles', 'Per-organization overrides', 'Gradual rollouts', 'Beta program access', 'Kill switches', 'Flag change history']} />;
+      case 'system-health':
+        return <PlatformModulePlaceholder icon={Gauge} title="System Health" description="Live status of platform services and infrastructure." bullets={['Service uptime & incidents', 'Latency & error rates', 'Background job status', 'Realtime connections', 'Email delivery health', 'Status page']} note="Basic service status shows on the Dashboard today." />;
+      case 'dashboard':
+      default:
+        return <PlatformDashboard organizations={organizations} users={users} auditLogs={auditLogs} userName={currentUser.name} setView={setView} />;
     }
   };
 
@@ -580,9 +641,29 @@ export default function App() {
     return <LandingView onLoginClick={(role) => { setSelectedRole(role); setShowAuth(true); }} />;
   }
 
+  // Platform Team members (super admin or any platform role) get the platform
+  // console — never the operational app.
+  if (currentUser.isPlatformAdmin || currentUser.platformRole) {
+    return (
+      <div className="flex bg-[#F4F7F9] min-h-screen text-slate-800 antialiased font-sans relative">
+        <PlatformSidebar currentView={currentView} setView={setView} userName={currentUser.name} onLogout={handleLogout} isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
+        <div className="flex-1 flex flex-col min-w-0">
+          <Header currentView={currentView} userRole={currentUser.role} userName={currentUser.name} notifications={notifications} onMarkAllRead={handleMarkAllNotificationsRead} orgName="Platform Console" onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} onLogout={handleLogout} setView={setView} platformMode />
+          <main className="flex-1 overflow-y-auto p-4 md:p-8">{renderPlatformView()}</main>
+        </div>
+      </div>
+    );
+  }
+
+  // Customer workspace lockout: expired trial or suspended org (platform users exempt).
+  const access = workspaceAccess(org, false);
+  if (access.locked && access.reason) {
+    return <WorkspaceLockedView org={org} reason={access.reason} onLogout={handleLogout} />;
+  }
+
   return (
     <div className="flex bg-[#F4F7F9] min-h-screen text-slate-800 antialiased font-sans relative">
-      <Sidebar currentView={currentView} setView={setView} userRole={currentUser.role} userName={currentUser.name} permissions={effectivePermissions} isPlatformAdmin={!!currentUser.isPlatformAdmin} onLogout={handleLogout} isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
+      <Sidebar currentView={currentView} setView={setView} userRole={currentUser.role} userName={currentUser.name} permissions={effectivePermissions} isPlatformAdmin={!!currentUser.isPlatformAdmin} enabledModules={org.enabledModules} onLogout={handleLogout} isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
       <div className="flex-1 flex flex-col min-w-0">
         <Header currentView={currentView} userRole={currentUser.role} userName={currentUser.name} notifications={notifications} onMarkAllRead={handleMarkAllNotificationsRead} orgName={org.companyName} onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} onLogout={handleLogout} setView={setView} onOpenCommandPalette={() => setIsCommandPaletteOpen(true)} opsSummary={opsSummary} />
         <main className="flex-1 overflow-y-auto p-4 md:p-8">

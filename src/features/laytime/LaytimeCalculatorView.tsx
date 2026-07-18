@@ -24,9 +24,10 @@ import { Voyage, LaytimeCalculation, SOFEvent } from '@/types';
 
 interface LaytimeCalculatorViewProps {
   currentUser: any;
+  orgName?: string;
 }
 
-export default function LaytimeCalculatorView({ currentUser }: LaytimeCalculatorViewProps) {
+export default function LaytimeCalculatorView({ currentUser, orgName = 'Your Agency' }: LaytimeCalculatorViewProps) {
   const [calculations, setCalculations] = useState<LaytimeCalculation[]>([]);
   const [selectedCalc, setSelectedCalc] = useState<LaytimeCalculation | null>(null);
   const [voyages, setVoyages] = useState<Voyage[]>([]);
@@ -284,7 +285,7 @@ export default function LaytimeCalculatorView({ currentUser }: LaytimeCalculator
               <span>Laytime & Demurrage Ledger</span>
             </div>
             <h2 className="text-lg font-bold text-[#201f1e] tracking-tight">
-              Oneport Agenc Laytime Settlement Engine
+              {orgName} — Laytime Settlement Engine
             </h2>
           </div>
         </div>
@@ -769,7 +770,7 @@ export default function LaytimeCalculatorView({ currentUser }: LaytimeCalculator
                   <div className="border-b-2 border-slate-800 pb-5 flex justify-between items-start">
                     <div>
                       <h3 className="text-xl font-black text-slate-900 font-sans tracking-tight uppercase">
-                        Oneport Agenc Shipping & Agency Services
+                        {orgName}
                       </h3>
                       <p className="text-[11px] tabular-nums text-slate-500 mt-0.5">
                         HQ Terminal Control, Dock 4, Southampton | agency@oneport.demo
@@ -967,7 +968,7 @@ export default function LaytimeCalculatorView({ currentUser }: LaytimeCalculator
                       <div className="border-b border-slate-300 h-10 w-48" />
                       <div>
                         <div className="font-bold text-slate-700">Authorized Protective Ship Agent</div>
-                        <div className="text-[10px] text-slate-400 mt-0.5">Oneport Agenc, UK Branch</div>
+                        <div className="text-[10px] text-slate-400 mt-0.5">{orgName}</div>
                       </div>
                     </div>
 

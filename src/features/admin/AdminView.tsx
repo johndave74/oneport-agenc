@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Shield, Users, Activity, UserCheck, Key, Mail, AlertTriangle, CheckCircle2 } from 'lucide-react';
-import { User, AuditLog, UserRole } from '@/types';
+import { Activity, Users, UserCheck, Key, UserPlus, AlertTriangle, CheckCircle2, Lock } from 'lucide-react';
+import { User, AuditLog, Organization } from '@/types';
 import { AdminApi } from '@/lib/supabase/adminApi';
 
 interface AdminViewProps {
@@ -8,6 +8,11 @@ interface AdminViewProps {
   auditLogs: AuditLog[];
   onUpdateUserRole: (userId: string, role: string) => void;
   initialTab?: 'users' | 'auditlogs';
+  organizations?: Organization[];
+  allowOrgSelect?: boolean;
+  onUserCreated?: () => void;
+  roleFilter?: string;
+  title?: string;
 }
 
 const DIRECTORY_ROLES: { key: string; label: string }[] = [
@@ -22,35 +27,37 @@ const DIRECTORY_ROLES: { key: string; label: string }[] = [
   { key: 'VIEWER', label: 'Viewer' },
 ];
 
-const INVITE_ROLES: { key: string; label: string }[] = [
-  { key: 'ORG_ADMIN', label: 'Organization Admin' },
-  { key: 'OPERATIONS_MANAGER', label: 'Operations Manager' },
-  { key: 'PORT_AGENT', label: 'Port Agent' },
-  { key: 'SHIP_AGENT', label: 'Ship Agent' },
-  { key: 'PROTECTIVE_AGENT', label: 'Protective Agent' },
-  { key: 'FINANCE', label: 'Finance Officer' },
-  { key: 'DOCUMENTATION', label: 'Documentation Officer' },
-  { key: 'VIEWER', label: 'Viewer (read-only)' },
-];
+// Roles an admin can assign when creating a user (excludes Platform Super Admin).
+const CREATE_ROLES = DIRECTORY_ROLES.filter((r) => r.key !== 'PLATFORM_SUPER_ADMIN');
 
-export default function AdminView({ users, auditLogs, onUpdateUserRole, initialTab = 'users' }: AdminViewProps) {
+export default function AdminView({ users, auditLogs, onUpdateUserRole, initialTab = 'users', organizations = [], allowOrgSelect = false, onUserCreated, roleFilter, title }: AdminViewProps) {
+  const shownUsers = roleFilter ? users.filter((u) => (u.role as string) === roleFilter) : users;
+  const orgName = (id: string) => organizations.find((o) => o.id === id)?.companyName || id;
+  const showOrgColumn = organizations.length > 0;
   const [showAddUserModal, setShowAddUserModal] = useState(false);
-  const [invite, setInvite] = useState({ email: '', name: '', roleKey: 'PORT_AGENT' });
-  const [inviteBusy, setInviteBusy] = useState(false);
-  const [inviteMsg, setInviteMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [form, setForm] = useState({ name: '', email: '', password: '', roleKey: 'PORT_AGENT', organizationId: '' });
+  const [busy, setBusy] = useState(false);
+  const [formMsg, setFormMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
-  const submitInvite = async (e: React.FormEvent) => {
+  const submitCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    setInviteMsg(null);
-    setInviteBusy(true);
+    setFormMsg(null);
+    setBusy(true);
     try {
-      await AdminApi.inviteUser({ email: invite.email.trim(), name: invite.name.trim(), roleKey: invite.roleKey });
-      setInviteMsg({ ok: true, text: `Invitation sent to ${invite.email}. They'll get an email to set their password.` });
-      setInvite({ email: '', name: '', roleKey: 'PORT_AGENT' });
+      await AdminApi.createUser({
+        name: form.name.trim(),
+        email: form.email.trim(),
+        password: form.password,
+        roleKey: form.roleKey,
+        organizationId: allowOrgSelect ? (form.organizationId || undefined) : undefined,
+      });
+      setFormMsg({ ok: true, text: `User ${form.email} created. They can sign in with the email and password you set.` });
+      setForm({ name: '', email: '', password: '', roleKey: 'PORT_AGENT', organizationId: '' });
+      onUserCreated?.();
     } catch (err) {
-      setInviteMsg({ ok: false, text: err instanceof Error ? err.message : 'Failed to send invitation.' });
+      setFormMsg({ ok: false, text: err instanceof Error ? err.message : 'Failed to create user.' });
     } finally {
-      setInviteBusy(false);
+      setBusy(false);
     }
   };
 
@@ -100,44 +107,43 @@ export default function AdminView({ users, auditLogs, onUpdateUserRole, initialT
           <div className="p-4 border-b border-slate-200 bg-slate-50/50 flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <Users className="h-4.5 w-4.5 text-[#6C4CE1]" />
-              <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">User Directory & Roles</h3>
+              <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">{title || 'User Directory & Roles'}</h3>
+              <span className="text-[10px] font-bold text-slate-400 tabular-nums">({shownUsers.length})</span>
             </div>
             <button
-              onClick={() => { setShowAddUserModal(true); setInviteMsg(null); }}
+              onClick={() => { setShowAddUserModal(true); setFormMsg(null); }}
               className="bg-[#6C4CE1] hover:bg-[#6C4CE1]/90 text-white font-semibold px-3 py-1.5 rounded-lg transition-colors cursor-pointer text-xs flex items-center gap-1.5"
             >
-              <Mail className="h-3.5 w-3.5" /> Invite User
+              <UserPlus className="h-3.5 w-3.5" /> Create User
             </button>
           </div>
 
+          <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-50 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-200">
-                <th className="py-2.5 px-4">Operator Name</th>
+                <th className="py-2.5 px-4">Name</th>
                 <th className="py-2.5 px-4">Email</th>
-                <th className="py-2.5 px-4">Active Authorization</th>
-                <th className="py-2.5 px-4 text-right">Modify Role Permissions</th>
+                {showOrgColumn && <th className="py-2.5 px-4">Organization</th>}
+                <th className="py-2.5 px-4">Role</th>
+                <th className="py-2.5 px-4 text-right">Change Role</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {users.map((u) => (
+              {shownUsers.map((u) => (
                 <tr key={u.id} className="hover:bg-slate-50/40">
                   <td className="py-3 px-4">
                     <div className="flex items-center space-x-2.5">
                       <div className="h-8 w-8 rounded-full bg-slate-100 text-slate-600 font-bold flex items-center justify-center tabular-nums shrink-0">
-                        {u.name.split(' ').map(n => n[0]).join('')}
+                        {u.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
                       </div>
                       <span className="font-bold text-slate-800">{u.name}</span>
                     </div>
                   </td>
                   <td className="py-3 px-4 tabular-nums text-slate-500">{u.email}</td>
+                  {showOrgColumn && <td className="py-3 px-4 text-slate-600 truncate max-w-[160px]">{orgName(u.organizationId)}</td>}
                   <td className="py-3 px-4">
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold tabular-nums uppercase ${
-                      u.role === 'ADMIN' ? 'bg-slate-100 text-slate-800 border' :
-                      u.role === 'PORT_AGENT' ? 'bg-[#6C4CE1]/10 text-[#2D1B69]' :
-                      u.role === 'SHIP_AGENT' ? 'bg-[#6C4CE1]/10 text-[#2D1B69]' :
-                      'bg-purple-50 text-purple-800'
-                    }`}>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-[#6C4CE1]/10 text-[#2D1B69]">
                       {u.role.replace(/_/g, ' ')}
                     </span>
                   </td>
@@ -152,8 +158,12 @@ export default function AdminView({ users, auditLogs, onUpdateUserRole, initialT
                   </td>
                 </tr>
               ))}
+              {shownUsers.length === 0 && (
+                <tr><td colSpan={showOrgColumn ? 5 : 4} className="py-8 text-center text-slate-400 text-xs">No users to show.</td></tr>
+              )}
             </tbody>
           </table>
+          </div>
         </div>
 
         {/* Permissions guidelines */}
@@ -214,69 +224,60 @@ export default function AdminView({ users, auditLogs, onUpdateUserRole, initialT
           <div className="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden">
             <div className="p-5 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
               <h4 className="text-sm font-bold text-slate-800 flex items-center space-x-2">
-                <Mail className="h-4.5 w-4.5 text-[#6C4CE1]" />
-                <span>Invite a User</span>
+                <UserPlus className="h-4.5 w-4.5 text-[#6C4CE1]" />
+                <span>Create a User</span>
               </h4>
-              <button
-                onClick={() => setShowAddUserModal(false)}
-                className="text-slate-400 hover:text-slate-600 font-bold text-lg cursor-pointer"
-              >
-                &times;
-              </button>
+              <button onClick={() => setShowAddUserModal(false)} className="text-slate-400 hover:text-slate-600 font-bold text-lg cursor-pointer">&times;</button>
             </div>
 
-            <form onSubmit={submitInvite} className="p-5 space-y-4 text-xs">
+            <form onSubmit={submitCreate} className="p-5 space-y-4 text-xs">
               <p className="text-slate-500 leading-relaxed">
-                Send an email invitation. The person sets their own password on the link — no public sign-up, and they join your organization with the role you choose.
+                Set the person's email and a password. They sign in with those straight away — no email is sent. Share the credentials with them securely.
               </p>
 
-              {inviteMsg && (
-                <div className={`flex items-start gap-2 rounded-lg px-3 py-2 border ${inviteMsg.ok ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-rose-50 border-rose-200 text-rose-700'}`}>
-                  {inviteMsg.ok ? <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0" /> : <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />}
-                  <span>{inviteMsg.text}</span>
+              {formMsg && (
+                <div className={`flex items-start gap-2 rounded-lg px-3 py-2 border ${formMsg.ok ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-rose-50 border-rose-200 text-rose-700'}`}>
+                  {formMsg.ok ? <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0" /> : <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />}
+                  <span>{formMsg.text}</span>
                 </div>
               )}
 
               <div className="space-y-1">
                 <label className="font-semibold text-slate-600">Full name</label>
-                <input
-                  type="text"
-                  value={invite.name}
-                  onChange={(e) => setInvite((v) => ({ ...v, name: e.target.value }))}
-                  placeholder="e.g. David Miller"
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 focus:ring-1 focus:ring-[#6C4CE1] focus:outline-none"
-                />
+                <input type="text" value={form.name} onChange={(e) => setForm((v) => ({ ...v, name: e.target.value }))} placeholder="e.g. David Miller" className="w-full border border-slate-200 rounded-lg px-3 py-2 focus:ring-1 focus:ring-[#6C4CE1] focus:outline-none" />
               </div>
 
               <div className="space-y-1">
                 <label className="font-semibold text-slate-600">Email address</label>
-                <input
-                  type="email"
-                  required
-                  value={invite.email}
-                  onChange={(e) => setInvite((v) => ({ ...v, email: e.target.value }))}
-                  placeholder="colleague@company.com"
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 focus:ring-1 focus:ring-[#6C4CE1] focus:outline-none"
-                />
+                <input type="email" required value={form.email} onChange={(e) => setForm((v) => ({ ...v, email: e.target.value }))} placeholder="colleague@company.com" className="w-full border border-slate-200 rounded-lg px-3 py-2 focus:ring-1 focus:ring-[#6C4CE1] focus:outline-none" />
               </div>
 
               <div className="space-y-1">
+                <label className="font-semibold text-slate-600 flex items-center gap-1.5"><Lock className="h-3 w-3 text-slate-400" /> Password</label>
+                <input type="text" required value={form.password} onChange={(e) => setForm((v) => ({ ...v, password: e.target.value }))} placeholder="At least 8 characters" className="w-full border border-slate-200 rounded-lg px-3 py-2 focus:ring-1 focus:ring-[#6C4CE1] focus:outline-none" />
+              </div>
+
+              {allowOrgSelect && (
+                <div className="space-y-1">
+                  <label className="font-semibold text-slate-600">Organization</label>
+                  <select value={form.organizationId} onChange={(e) => setForm((v) => ({ ...v, organizationId: e.target.value }))} className="w-full border border-slate-200 rounded-lg px-3 py-2 bg-white focus:ring-1 focus:ring-[#6C4CE1] focus:outline-none cursor-pointer">
+                    <option value="">— Select organization —</option>
+                    {organizations.map((o) => <option key={o.id} value={o.id}>{o.companyName}</option>)}
+                  </select>
+                </div>
+              )}
+
+              <div className="space-y-1">
                 <label className="font-semibold text-slate-600">Role</label>
-                <select
-                  value={invite.roleKey}
-                  onChange={(e) => setInvite((v) => ({ ...v, roleKey: e.target.value }))}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 bg-white focus:ring-1 focus:ring-[#6C4CE1] focus:outline-none cursor-pointer"
-                >
-                  {INVITE_ROLES.map((r) => <option key={r.key} value={r.key}>{r.label}</option>)}
+                <select value={form.roleKey} onChange={(e) => setForm((v) => ({ ...v, roleKey: e.target.value }))} className="w-full border border-slate-200 rounded-lg px-3 py-2 bg-white focus:ring-1 focus:ring-[#6C4CE1] focus:outline-none cursor-pointer">
+                  {CREATE_ROLES.map((r) => <option key={r.key} value={r.key}>{r.label}</option>)}
                 </select>
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
-                <button type="button" onClick={() => setShowAddUserModal(false)} className="px-4 py-2 border border-slate-200 rounded-lg text-slate-600 font-semibold hover:bg-slate-50 cursor-pointer">
-                  Close
-                </button>
-                <button type="submit" disabled={inviteBusy} className={`px-4 py-2 bg-[#6C4CE1] hover:bg-[#5839C6] text-white rounded-lg font-semibold shadow-sm flex items-center gap-1.5 ${inviteBusy ? 'opacity-70' : ''}`}>
-                  <Mail className="h-3.5 w-3.5" /> {inviteBusy ? 'Sending…' : 'Send invitation'}
+                <button type="button" onClick={() => setShowAddUserModal(false)} className="px-4 py-2 border border-slate-200 rounded-lg text-slate-600 font-semibold hover:bg-slate-50 cursor-pointer">Close</button>
+                <button type="submit" disabled={busy} className={`px-4 py-2 bg-[#6C4CE1] hover:bg-[#5839C6] text-white rounded-lg font-semibold shadow-sm flex items-center gap-1.5 ${busy ? 'opacity-70' : ''}`}>
+                  <UserPlus className="h-3.5 w-3.5" /> {busy ? 'Creating…' : 'Create user'}
                 </button>
               </div>
             </form>

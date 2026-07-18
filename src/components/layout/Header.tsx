@@ -20,6 +20,7 @@ interface HeaderProps {
   setView?: (view: string) => void;
   onOpenCommandPalette?: () => void;
   opsSummary?: OpsSummary;
+  platformMode?: boolean;
 }
 
 const ROLE_LABELS: Record<UserRole, string> = {
@@ -40,7 +41,8 @@ export default function Header({
   onLogout,
   setView,
   onOpenCommandPalette,
-  opsSummary
+  opsSummary,
+  platformMode = false
 }: HeaderProps) {
   const [showNotifMenu, setShowNotifMenu] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -70,12 +72,26 @@ export default function Header({
     company: 'Company Details',
     admin: 'Users, Roles & Audit Trail',
     auditlogs: 'Security Audit Trail',
-    organizations: 'Organizations'
+    organizations: 'Organizations',
+    roles: 'Roles & Permissions',
+    subscription: 'Subscription & Plan'
   };
+  const platformTitles: Record<string, string> = {
+    dashboard: 'Platform Console', organizations: 'Organizations',
+    'platform-team': 'Platform Team', orgusers: 'Organization Users',
+    users: 'Users', roles: 'Roles & Permissions', auditlogs: 'Audit Logs', notifications: 'Notifications',
+    'svc-auth': 'Authentication', 'svc-api': 'API & Edge Functions', 'svc-db': 'Database', 'svc-storage': 'Storage',
+    subscriptions: 'Subscriptions', analytics: 'Platform Analytics', billing: 'Billing',
+    'feature-flags': 'Feature Flags', 'system-health': 'System Health',
+    settings: 'Settings'
+  };
+  const pageTitle = platformMode
+    ? (platformTitles[currentView] || currentView)
+    : (titles[currentView] || currentView);
 
   // Map views to multi-level breadcrumbs
   const breadcrumbs: Record<string, string[]> = {
-    dashboard: ['Oneport Agenc', 'Dashboard'],
+    dashboard: [orgName || 'Workspace', 'Dashboard'],
     planning: ['Operations', 'Planning Centre'],
     vessels: ['Operations', 'Vessels'],
     voyages: ['Operations', 'Port Calls'],
@@ -96,10 +112,14 @@ export default function Header({
     company: ['Account', 'Company'],
     admin: ['Administration', 'Users & Roles'],
     auditlogs: ['Administration', 'Audit Logs'],
-    organizations: ['Platform', 'Organizations']
+    organizations: ['Platform', 'Organizations'],
+    roles: ['Platform', 'Roles & Permissions'],
+    subscription: ['Administration', 'Subscription']
   };
 
-  const currentPath = breadcrumbs[currentView] || ['Oneport Agenc', currentView];
+  const currentPath = platformMode
+    ? ['Platform', platformTitles[currentView] || currentView]
+    : (breadcrumbs[currentView] || [orgName || 'Workspace', currentView]);
 
   useEffect(() => {
     const updateTime = () => {
@@ -131,7 +151,7 @@ export default function Header({
 
         <div className="flex flex-col min-w-0">
           <h2 className="text-xs md:text-sm font-semibold text-slate-900 tracking-tight leading-none capitalize truncate max-w-[130px] sm:max-w-[280px]">
-            {titles[currentView] || currentView}
+            {pageTitle}
           </h2>
           <div className="flex items-center space-x-1 text-[9px] md:text-[10px] text-slate-400 font-semibold font-sans tracking-tight uppercase mt-1 truncate">
             {currentPath.map((node, index) => (
@@ -146,8 +166,8 @@ export default function Header({
         </div>
       </div>
 
-      {/* Command Palette trigger */}
-      <div className="hidden md:flex items-center flex-1 max-w-2xl">
+      {/* Command Palette trigger (operational only) */}
+      <div className={`hidden md:flex items-center flex-1 max-w-2xl ${platformMode ? 'invisible' : ''}`}>
         <button
           onClick={() => onOpenCommandPalette?.()}
           className="relative w-full text-left cursor-pointer"
@@ -197,14 +217,16 @@ export default function Header({
           )}
         </div>
 
-        {/* Live Radio & Chat shortcut */}
-        <button
-          onClick={() => setView?.('messages')}
-          className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-200/50 rounded-lg border border-slate-300 transition-colors cursor-pointer"
-          title="Live Radio & Chat"
-        >
-          <MessageSquare className="h-4.5 w-4.5" />
-        </button>
+        {/* Live Radio & Chat shortcut (operational only) */}
+        {!platformMode && (
+          <button
+            onClick={() => setView?.('messages')}
+            className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-200/50 rounded-lg border border-slate-300 transition-colors cursor-pointer"
+            title="Live Radio & Chat"
+          >
+            <MessageSquare className="h-4.5 w-4.5" />
+          </button>
+        )}
 
         {/* Notifications Dropdown Toggle */}
         <div className="relative">
@@ -277,7 +299,7 @@ export default function Header({
 
         {/* Organization display */}
         <div className="hidden xl:flex flex-col items-end pl-1 pr-2 border-l border-slate-200 leading-tight">
-          <span className="text-xs font-bold text-slate-700 truncate max-w-[140px]">{orgName || 'Oneport Agenc'}</span>
+          <span className="text-xs font-bold text-slate-700 truncate max-w-[140px]">{orgName || 'Organization'}</span>
           <span className="text-[9px] text-slate-400 uppercase tracking-wider">Organization</span>
         </div>
 

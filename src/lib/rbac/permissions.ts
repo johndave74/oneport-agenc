@@ -78,6 +78,7 @@ const ROLE_VIEW_MODULES: Record<RoleKey, ModuleId[]> = {
   PORT_AGENT: ['dashboard', 'port_calls', 'planning', 'vessels', 'tasks', 'crew', 'documents', 'expenses', 'invoices', 'tariffs', 'approvals', 'partners', 'agents', 'messages', 'reports', 'notifications', 'settings'],
   SHIP_AGENT: ['dashboard', 'port_calls', 'planning', 'vessels', 'crew', 'documents', 'expenses', 'invoices', 'tariffs', 'approvals', 'laytime', 'partners', 'agents', 'messages', 'reports', 'notifications', 'settings'],
   PROTECTIVE_AGENT: ['dashboard', 'port_calls', 'planning', 'vessels', 'tasks', 'crew', 'documents', 'expenses', 'invoices', 'tariffs', 'approvals', 'partners', 'agents', 'messages', 'reports', 'notifications', 'settings'],
+  SUPERVISORY_AGENT: ['dashboard', 'port_calls', 'planning', 'vessels', 'tasks', 'crew', 'documents', 'expenses', 'invoices', 'tariffs', 'approvals', 'partners', 'agents', 'messages', 'reports', 'notifications', 'settings'],
   FINANCE: ['dashboard', 'port_calls', 'expenses', 'invoices', 'tariffs', 'approvals', 'partners', 'reports', 'notifications', 'settings'],
   DOCUMENTATION: ['dashboard', 'port_calls', 'vessels', 'crew', 'documents', 'partners', 'agents', 'messages', 'reports', 'notifications', 'settings'],
   VIEWER: ALL_VIEW,
