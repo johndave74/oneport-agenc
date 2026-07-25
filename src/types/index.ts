@@ -35,6 +35,8 @@ export interface Organization {
   planStatus?: string;
   planExpiry?: string | null;
   enabledModules?: string[] | null; // null = all modules enabled
+  deletedAt?: string | null; // set = in Trash (soft-deleted)
+  deletedBy?: string | null;
 }
 
 // ---- Phase 2: RBAC + multi-tenant (additive; not yet wired into runtime) ----
@@ -178,6 +180,9 @@ export interface Expense {
   description: string;
   submittedBy: string;
   submittedAt: string;
+  approverId?: string;
+  approverName?: string;
+  submittedById?: string;
 }
 
 export interface Message {

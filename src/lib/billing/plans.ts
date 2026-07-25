@@ -84,10 +84,11 @@ export interface AccessState {
 
 // Whether a customer workspace is locked. Platform users are never locked.
 export function workspaceAccess(
-  org: { status?: string; planStatus?: string; planExpiry?: string | null } | null | undefined,
+  org: { status?: string; planStatus?: string; planExpiry?: string | null; deletedAt?: string | null } | null | undefined,
   isPlatformUser: boolean,
 ): AccessState {
   if (isPlatformUser || !org) return { locked: false, reason: null };
+  if (org.deletedAt) return { locked: true, reason: 'suspended' };
   const status = (org.planStatus || 'active').toLowerCase();
   if (org.status === 'suspended' || status === 'suspended' || status === 'cancelled') {
     return { locked: true, reason: 'suspended' };

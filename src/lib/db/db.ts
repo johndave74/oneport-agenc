@@ -73,6 +73,16 @@ export const Db = {
     if (error) throw new Error(error.message);
   },
 
+  async trashOrganization(id: string, deletedBy: string): Promise<Organization> {
+    const res = await supabase.from('organizations').update({ deletedAt: new Date().toISOString(), deletedBy }).eq('id', id).select().single();
+    return unwrap(res as any);
+  },
+
+  async restoreOrganization(id: string): Promise<Organization> {
+    const res = await supabase.from('organizations').update({ deletedAt: null, deletedBy: null }).eq('id', id).select().single();
+    return unwrap(res as any);
+  },
+
   // -------------------------------------------------------------- Users
   async getUsers(): Promise<User[]> {
     const res = await supabase.from('users').select('*');

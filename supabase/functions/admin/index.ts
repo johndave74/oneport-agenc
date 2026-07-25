@@ -260,6 +260,32 @@ Deno.serve(async (req) => {
       return json({ ok: true, organizationId: org, cleared });
     }
 
+    // ---------------------------------------------------- purge_organization
+    // Permanently delete an organization: its operational data, its users, then
+    // the org itself. Platform admin only. Never the platform org (org-1).
+    if (action === 'purge_organization') {
+      const caller = await getCaller(admin, req.headers.get('Authorization'));
+      if (!caller) return json({ error: 'Unauthorized' }, 401);
+      if (!caller.isPlatformAdmin) return json({ error: 'Forbidden — platform admin only' }, 403);
+      const orgId = String(payload.organizationId ?? '');
+      if (!orgId) return json({ error: 'organizationId is required' }, 400);
+      if (orgId === 'org-1') return json({ error: 'The platform organization cannot be deleted.' }, 400);
+      if (payload.confirm !== 'DELETE ORGANIZATION') return json({ error: 'Confirmation text does not match.' }, 400);
+
+      for (const table of OPERATIONAL_TABLES) {
+        await admin.from(table).delete().eq('organizationId', orgId);
+      }
+      await admin.from('invitations').delete().eq('organizationId', orgId);
+      const { data: orgUsers } = await admin.from('users').select('id').eq('organizationId', orgId);
+      for (const u of (orgUsers ?? []) as { id: string }[]) {
+        try { await admin.auth.admin.deleteUser(u.id); } catch (e) { console.error('[admin] deleteUser failed', e); }
+      }
+      const { error } = await admin.from('organizations').delete().eq('id', orgId);
+      if (error) return json({ error: error.message }, 400);
+      console.log('[admin] purged organization', orgId);
+      return json({ ok: true, organizationId: orgId });
+    }
+
     return json({ error: `Unknown action: ${action}` }, 400);
   } catch (err) {
     console.error('[admin] unhandled error:', err instanceof Error ? err.message : err);

@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckSquare, Check, X, AlertTriangle } from 'lucide-react';
+import { CheckSquare, Check, X, AlertTriangle, UserCheck } from 'lucide-react';
 import { Expense, Incident, UserRole } from '@/types';
 import EmptyState from '@/components/ui/EmptyState';
 
@@ -9,12 +9,18 @@ interface ApprovalsViewProps {
   onApproveExpense: (id: string) => void;
   onRejectExpense: (id: string) => void;
   userRole: UserRole;
+  currentUserId?: string;
 }
 
-export default function ApprovalsView({ expenses, incidents, onApproveExpense, onRejectExpense, userRole }: ApprovalsViewProps) {
-  const pendingExpenses = expenses.filter(e => e.status === 'Pending Approval');
+export default function ApprovalsView({ expenses, incidents, onApproveExpense, onRejectExpense, userRole, currentUserId }: ApprovalsViewProps) {
+  const isApprover = userRole === 'PROTECTIVE_AGENT' || userRole === 'ADMIN';
+  // Assigned-to-me items first, then the rest.
+  const pendingExpenses = expenses
+    .filter(e => e.status === 'Pending Approval')
+    .sort((a, b) => Number(b.approverId === currentUserId) - Number(a.approverId === currentUserId));
   const openIncidents = incidents.filter(i => i.status !== 'Resolved');
-  const canAct = userRole === 'PROTECTIVE_AGENT' || userRole === 'ADMIN';
+  // You can act if you're an admin/protective approver, or you're the named approver.
+  const canActOn = (e: Expense) => isApprover || (!!currentUserId && e.approverId === currentUserId);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 text-xs">
@@ -27,17 +33,19 @@ export default function ApprovalsView({ expenses, incidents, onApproveExpense, o
           <EmptyState icon={CheckSquare} title="No expenses awaiting approval" size="sm" />
         ) : (
           <div className="divide-y divide-slate-100 max-h-[600px] overflow-y-auto">
-            {pendingExpenses.map((e) => (
-              <div key={e.id} className="p-4 hover:bg-slate-50/50 transition-colors">
+            {pendingExpenses.map((e) => {
+              const mine = !!currentUserId && e.approverId === currentUserId;
+              return (
+              <div key={e.id} className={`p-4 transition-colors ${mine ? 'bg-[#6C4CE1]/[0.04] border-l-2 border-[#6C4CE1]' : 'hover:bg-slate-50/50'}`}>
                 <div className="flex items-start justify-between gap-2 mb-1">
                   <div>
-                    <span className="font-bold text-slate-800 block">{e.category}</span>
-                    <span className="text-[10px] text-slate-400">Voyage {e.voyageNumber} · Submitted by {e.submittedBy}</span>
+                    <span className="font-bold text-slate-800 flex items-center gap-1.5">{e.category}{mine && <span className="inline-flex items-center gap-0.5 text-[9px] font-bold uppercase text-[#6C4CE1] bg-[#6C4CE1]/10 px-1.5 py-0.5 rounded-full"><UserCheck className="h-2.5 w-2.5" /> For you</span>}</span>
+                    <span className="text-[10px] text-slate-400">Voyage {e.voyageNumber} · Submitted by {e.submittedBy}{e.approverName ? ` · Approver: ${e.approverName}` : ''}</span>
                   </div>
                   <span className="tabular-nums font-bold text-slate-800 shrink-0">${e.amount.toLocaleString()}</span>
                 </div>
                 <p className="text-[11px] text-slate-500 mb-2">{e.description}</p>
-                {canAct ? (
+                {canActOn(e) ? (
                   <div className="flex items-center justify-end space-x-2">
                     <button onClick={() => onRejectExpense(e.id)} className="bg-slate-50 hover:bg-rose-100 hover:text-rose-700 text-slate-500 border border-slate-200 px-2.5 py-1 rounded flex items-center gap-1 transition-colors cursor-pointer font-semibold">
                       <X className="h-3 w-3" /> Reject
@@ -47,10 +55,10 @@ export default function ApprovalsView({ expenses, incidents, onApproveExpense, o
                     </button>
                   </div>
                 ) : (
-                  <span className="text-[10px] text-slate-400 tabular-nums italic">Awaiting Protective Agent / Admin review</span>
+                  <span className="text-[10px] text-slate-400 tabular-nums italic">{e.approverName ? `Awaiting ${e.approverName}` : 'Awaiting an approver'}</span>
                 )}
               </div>
-            ))}
+            ); })}
           </div>
         )}
       </div>

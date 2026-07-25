@@ -63,6 +63,7 @@ import AcceptInviteView from '@/features/auth/AcceptInviteView';
 import WorkspaceLockedView from '@/features/auth/WorkspaceLockedView';
 import LandingView from '@/features/auth/LandingView';
 import { workspaceAccess } from '@/lib/billing/plans';
+import { AdminApi } from '@/lib/supabase/adminApi';
 import LaytimeCalculatorView from '@/features/laytime/LaytimeCalculatorView';
 import CrmView from '@/features/crm/CrmView';
 import CrewView from '@/features/crew/CrewView';
@@ -342,23 +343,49 @@ export default function App() {
     setDocuments(prev => prev.filter(d => d.id !== id));
   };
 
+  const pushNotification = async (userId: string, message: string, type: Notification['type']) => {
+    if (!userId) return;
+    try { const n = await Db.addNotification(userId, message, type); setNotifications(prev => [n, ...prev]); } catch (e) { console.error('notify failed', e); }
+  };
+  const pushAudit = async (action: string, details: string) => {
+    if (!currentUser) return;
+    try { const log = await Db.addAuditLog(currentUser.id, currentUser.name, action, details); setAuditLogs(prev => [log, ...prev]); } catch { /* non-fatal */ }
+  };
+
   const handleAddExpense = async (newExpense: Omit<Expense, 'id' | 'submittedBy' | 'submittedAt'>) => {
     if (!currentUser) return;
-    const item = await Db.addExpense(newExpense, currentUser.name);
+    const item = await Db.addExpense({ ...newExpense, submittedById: currentUser.id }, currentUser.name);
     setExpenses(prev => [...prev, item]);
+
+    if (item.status === 'Pending Approval') {
+      // Route to the chosen approver, or notify all approval-capable org users.
+      const recipients = item.approverId
+        ? users.filter(u => u.id === item.approverId)
+        : users.filter(u => !u.platformRole && ['ORG_ADMIN', 'OPERATIONS_MANAGER', 'PROTECTIVE_AGENT'].includes(u.role as string) && u.id !== currentUser.id);
+      const msg = `Approval requested — ${item.category} $${item.amount.toLocaleString()} on ${item.voyageNumber} (from ${currentUser.name}).`;
+      for (const r of recipients) await pushNotification(r.id, msg, 'Alert');
+      await pushAudit('Expense Routed for Approval', `${item.category} $${item.amount.toLocaleString()} on ${item.voyageNumber}${item.approverName ? ` → ${item.approverName}` : ''}.`);
+    }
   };
 
-  const handleApproveExpense = async (id: string) => {
+  const decideExpense = async (id: string, decision: 'Approved' | 'Rejected') => {
     if (!currentUser) return;
-    const updated = await Db.updateExpenseStatus(id, 'Approved');
+    const before = expenses.find(e => e.id === id);
+    const updated = await Db.updateExpenseStatus(id, decision);
     setExpenses(prev => prev.map(e => e.id === id ? updated : e));
+    const submitterId = before?.submittedById;
+    if (submitterId && submitterId !== currentUser.id) {
+      await pushNotification(
+        submitterId,
+        `Your ${before?.category} expense ($${(before?.amount || 0).toLocaleString()}) on ${before?.voyageNumber} was ${decision.toLowerCase()} by ${currentUser.name}.`,
+        decision === 'Approved' ? 'System' : 'Alert'
+      );
+    }
+    await pushAudit(`Expense ${decision}`, `${before?.category} $${(before?.amount || 0).toLocaleString()} on ${before?.voyageNumber}.`);
   };
 
-  const handleRejectExpense = async (id: string) => {
-    if (!currentUser) return;
-    const updated = await Db.updateExpenseStatus(id, 'Rejected');
-    setExpenses(prev => prev.map(e => e.id === id ? updated : e));
-  };
+  const handleApproveExpense = (id: string) => decideExpense(id, 'Approved');
+  const handleRejectExpense = (id: string) => decideExpense(id, 'Rejected');
 
   const handleSendMessage = async (voyageId: string, content: string) => {
     if (!currentUser) return;
@@ -411,6 +438,27 @@ export default function App() {
   const handleDeleteOrganization = async (id: string): Promise<void> => {
     await Db.deleteOrganization(id);
     setOrganizations(prev => prev.filter(o => o.id !== id));
+  };
+
+  const handleTrashOrganization = async (id: string): Promise<void> => {
+    if (!currentUser) return;
+    const updated = await Db.trashOrganization(id, currentUser.name);
+    setOrganizations(prev => prev.map(o => o.id === id ? updated : o));
+    await pushAudit('Organization Moved to Trash', `${updated.companyName} moved to Trash.`);
+  };
+
+  const handleRestoreOrganization = async (id: string): Promise<void> => {
+    const updated = await Db.restoreOrganization(id);
+    setOrganizations(prev => prev.map(o => o.id === id ? updated : o));
+    await pushAudit('Organization Restored', `${updated.companyName} restored from Trash.`);
+  };
+
+  const handlePurgeOrganization = async (id: string): Promise<void> => {
+    const org = organizations.find(o => o.id === id);
+    await AdminApi.purgeOrganization(id);
+    setOrganizations(prev => prev.filter(o => o.id !== id));
+    setUsers(prev => prev.filter(u => u.organizationId !== id));
+    await pushAudit('Organization Permanently Deleted', `${org?.companyName || id} and all its users and data were permanently deleted.`);
   };
 
   const handleMarkNotificationRead = async (id: string) => {
@@ -560,21 +608,21 @@ export default function App() {
       case 'voyages': return <VoyagesView voyages={voyages} vessels={vessels} users={users} tasks={tasks} documents={documents} expenses={expenses} laytimeCalculations={laytimeCalculations} onAddVoyage={handleAddVoyage} onAddVessel={handleAddVessel} onUpdateCargoDetails={handleUpdateCargoDetails} onDeleteVoyage={handleDeleteVoyage} onToggleTimelineEvent={handleToggleTimelineEvent} setView={setView} userRole={viewRole} />;
       case 'tasks': return <TasksView tasks={tasks} voyages={voyages} onAddTask={handleAddTask} onUpdateTaskStatus={handleUpdateTaskStatus} userRole={viewRole} />;
       case 'documents': return <DocumentsView documents={documents} voyages={voyages} onUploadDocument={handleUploadDocument} onDeleteDocument={handleDeleteDocument} userName={currentUser.name} />;
-      case 'expenses': return <ExpensesView expenses={expenses} voyages={voyages} documents={documents} onUploadDocument={handleUploadDocument} onDeleteDocument={handleDeleteDocument} onAddExpense={handleAddExpense} onApproveExpense={handleApproveExpense} onRejectExpense={handleRejectExpense} userRole={viewRole} userName={currentUser.name} />;
+      case 'expenses': return <ExpensesView expenses={expenses} voyages={voyages} documents={documents} users={users} currentUserId={currentUser.id} onUploadDocument={handleUploadDocument} onDeleteDocument={handleDeleteDocument} onAddExpense={handleAddExpense} onApproveExpense={handleApproveExpense} onRejectExpense={handleRejectExpense} userRole={viewRole} userName={currentUser.name} />;
       case 'messages': return <MessagesView messages={messages} voyages={voyages} onSendMessage={handleSendMessage} userRole={viewRole} userName={currentUser.name} />;
       case 'crm': return <CrmView users={users} vessels={vessels} currentUser={currentUser} onSendMessage={handleSendMessage} onUpdateVessel={handleEditVessel} onAddNotification={handleAddNotification} onAddAuditLog={handleAddAuditLog} />;
       case 'crew': return <CrewView crewMembers={crewMembers} vessels={vessels} onAddCrewMember={handleAddCrewMember} onEditCrewMember={handleEditCrewMember} onDeleteCrewMember={handleDeleteCrewMember} />;
       case 'partners': return <PartnersView partners={partners} onAddPartner={handleAddPartner} onEditPartner={handleEditPartner} onDeletePartner={handleDeletePartner} />;
       case 'tariffs': return <TariffsView tariffs={tariffs} partners={partners} onAddTariff={handleAddTariff} onEditTariff={handleEditTariff} onDeleteTariff={handleDeleteTariff} />;
       case 'invoices': return <InvoicesView invoices={invoices} voyages={voyages} partners={partners} onAddInvoice={handleAddInvoice} onUpdateInvoiceStatus={handleUpdateInvoiceStatus} onDeleteInvoice={handleDeleteInvoice} userName={currentUser.name} />;
-      case 'approvals': return <ApprovalsView expenses={expenses} incidents={incidents} onApproveExpense={handleApproveExpense} onRejectExpense={handleRejectExpense} userRole={currentUser.role} />;
+      case 'approvals': return <ApprovalsView expenses={expenses} incidents={incidents} onApproveExpense={handleApproveExpense} onRejectExpense={handleRejectExpense} userRole={viewRole} currentUserId={currentUser.id} />;
       case 'reports': return <ReportsView vessels={vessels} voyages={voyages} incidents={incidents} expenses={expenses} />;
       case 'laytime': return <LaytimeCalculatorView currentUser={currentUser} orgName={org.companyName} />;
       case 'notifications': return <NotificationsView notifications={notifications} onMarkRead={handleMarkNotificationRead} onClearAll={handleMarkAllNotificationsRead} userRole={currentUser.role} />;
       case 'settings': return <SettingsView userName={currentUser.name} userEmail={currentUser.email} userRole={currentUser.role} onUpdateProfile={handleUpdateProfile} />;
       case 'company': return <CompanySettingsView userRole={currentUser.role} org={org} onUpdateOrg={handleUpdateOrg} />;
       case 'subscription': return <SubscriptionView org={org} userCount={users.filter(u => !u.platformRole).length} />;
-      case 'organizations': return <OrganizationsView organizations={organizations} users={users} currentOrgId={currentUser.organizationId} onCreateOrganization={handleAddOrganization} onUpdateOrganization={handleUpdateOrganization} onDeleteOrganization={handleDeleteOrganization} />;
+      case 'organizations': return <OrganizationsView organizations={organizations} users={users} currentOrgId={currentUser.organizationId} onCreateOrganization={handleAddOrganization} onUpdateOrganization={handleUpdateOrganization} onTrashOrganization={handleTrashOrganization} onRestoreOrganization={handleRestoreOrganization} onPurgeOrganization={handlePurgeOrganization} />;
       case 'admin': return <AdminView users={users} auditLogs={auditLogs} onUpdateUserRole={handleUpdateUserRole} initialTab="users" currentUserId={currentUser.id} />;
       case 'auditlogs': return <AdminView users={users} auditLogs={auditLogs} onUpdateUserRole={handleUpdateUserRole} initialTab="auditlogs" />;
       default: return <div className="p-8 text-center text-slate-500 text-xs">Operational module "{currentView}" under system maintenance.</div>;
@@ -586,7 +634,7 @@ export default function App() {
     if (!currentUser) return null;
     switch (currentView) {
       case 'organizations':
-        return <OrganizationsView organizations={organizations} users={users} currentOrgId={currentUser.organizationId} onCreateOrganization={handleAddOrganization} onUpdateOrganization={handleUpdateOrganization} onDeleteOrganization={handleDeleteOrganization} />;
+        return <OrganizationsView organizations={organizations} users={users} currentOrgId={currentUser.organizationId} onCreateOrganization={handleAddOrganization} onUpdateOrganization={handleUpdateOrganization} onTrashOrganization={handleTrashOrganization} onRestoreOrganization={handleRestoreOrganization} onPurgeOrganization={handlePurgeOrganization} />;
       case 'platform-team':
         return <UsersManagementView scope="platform" users={users} organizations={organizations} auditLogs={auditLogs} currentUserId={currentUser.id} currentUserIsOwner={currentUser.platformRole === 'PLATFORM_OWNER'} onUpdateUserRole={handleUpdateUserRole} onUpdateAccountStatus={handleUpdateAccountStatus} onRefresh={loadWorkspaceData} />;
       case 'orgusers':

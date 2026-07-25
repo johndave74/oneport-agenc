@@ -29,11 +29,13 @@ interface ExpensesViewProps {
   onRejectExpense: (id: string) => void;
   userRole: UserRole;
   userName: string;
+  users?: import('@/types').User[];
+  currentUserId?: string;
 }
 
-export default function ExpensesView({ 
-  expenses, 
-  voyages, 
+export default function ExpensesView({
+  expenses,
+  voyages,
   documents = [],
   onUploadDocument,
   onDeleteDocument,
@@ -41,8 +43,11 @@ export default function ExpensesView({
   onApproveExpense,
   onRejectExpense,
   userRole,
-  userName
+  userName,
+  users = [],
+  currentUserId
 }: ExpensesViewProps) {
+  const approvers = users.filter((u) => !u.platformRole && ['ORG_ADMIN', 'OPERATIONS_MANAGER', 'PROTECTIVE_AGENT', 'FINANCE'].includes(u.role as string) && u.id !== currentUserId);
   const [searchTerm, setSearchTerm] = useState('');
   const [voyageFilter, setVoyageFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
@@ -62,6 +67,8 @@ export default function ExpensesView({
   const [category, setCategory] = useState<Expense['category']>('Pilotage');
   const [desc, setDesc] = useState('');
   const [status, setStatus] = useState<Expense['status']>('Estimated');
+  const [approverId, setApproverId] = useState('');
+  const [routeForApproval, setRouteForApproval] = useState(true);
 
   const filteredExpenses = expenses.filter((exp) => {
     const matchesSearch = exp.description.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -87,18 +94,22 @@ export default function ExpensesView({
     e.preventDefault();
     if (!voyageId || !amount) return;
 
+    const approver = approvers.find((u) => u.id === approverId);
     onAddExpense({
       voyageId,
       voyageNumber: voyages.find(v => v.id === voyageId)?.voyageNumber || 'TBA',
       amount: Number(amount),
       estimatedAmount: Number(estAmount),
       category,
-      status: (userRole === 'SHIP_AGENT' || userRole === 'ADMIN') ? 'Pending Approval' : 'Estimated',
-      description: desc
+      status: routeForApproval ? 'Pending Approval' : 'Estimated',
+      description: desc,
+      approverId: routeForApproval ? (approverId || undefined) : undefined,
+      approverName: routeForApproval ? (approver?.name || undefined) : undefined,
     });
 
     setVoyageId('');
     setDesc('');
+    setApproverId('');
     setShowAddModal(false);
   };
 
@@ -679,6 +690,24 @@ export default function ExpensesView({
                   className="w-full border border-slate-200 rounded-lg p-2 h-20 focus:ring-1 focus:ring-[#6C4CE1] focus:outline-none bg-white"
                   required
                 />
+              </div>
+
+              {/* Approval routing */}
+              <div className="space-y-2 bg-slate-50 border border-slate-100 rounded-lg p-3">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={routeForApproval} onChange={(e) => setRouteForApproval(e.target.checked)} className="rounded border-slate-300 text-[#6C4CE1] focus:ring-[#6C4CE1]" />
+                  <span className="text-slate-600 font-semibold">Send for approval</span>
+                </label>
+                {routeForApproval && (
+                  <div className="space-y-1">
+                    <label className="text-slate-500 font-semibold text-[11px]">Approver</label>
+                    <select value={approverId} onChange={(e) => setApproverId(e.target.value)} className="w-full border border-slate-200 rounded-lg p-2 bg-white focus:ring-1 focus:ring-[#6C4CE1] focus:outline-none cursor-pointer">
+                      <option value="">Any approver (notify all)</option>
+                      {approvers.map((u) => <option key={u.id} value={u.id}>{u.name}{u.role ? ` · ${(u.role as string).replace(/_/g, ' ')}` : ''}</option>)}
+                    </select>
+                    <p className="text-[10px] text-slate-400">{approverId ? 'This person will be notified to approve.' : 'All admins/approvers will be notified.'}</p>
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center justify-end space-x-2 pt-4 border-t border-slate-100">

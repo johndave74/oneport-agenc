@@ -19,7 +19,7 @@ import { Vessel, VesselStatus, UserRole, User as AppUser } from '@/types';
 interface VesselsViewProps {
   vessels: Vessel[];
   users?: AppUser[];
-  onAddVessel: (vessel: Omit<Vessel, 'id'>) => void;
+  onAddVessel: (vessel: Omit<Vessel, 'id'>) => void | Promise<unknown>;
   onEditVessel?: (vessel: Vessel) => void;
   onDeleteVessel?: (id: string) => void;
   onUpdateVesselStatus: (id: string, status: VesselStatus) => void;
@@ -38,6 +38,8 @@ export default function VesselsView({
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('All');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
+  const [addBusy, setAddBusy] = useState(false);
 
   // New Vessel Form State
   const [name, setName] = useState('');
@@ -137,40 +139,43 @@ export default function VesselsView({
     return matchesSearch && matchesStatus;
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !imo || !voyageNumber) return;
+    setAddError(null);
+    setAddBusy(true);
 
     const selectedAgent = users.find(u => u.id === assignedAgentId);
 
-    onAddVessel({
-      vesselName: name,
-      imoNumber: imo,
-      callSign: callSign || 'N/A',
-      flag: flag || 'Unknown',
-      vesselType,
-      grossTonnage: Number(gt),
-      deadweight: Number(dwt),
-      captainDetails: captain || 'TBA',
-      crewCount: Number(crewCount),
-      eta: eta || new Date().toISOString().substring(0, 16),
-      etd: etd || new Date().toISOString().substring(0, 16),
-      currentPort,
-      voyageNumber,
-      status,
-      assignedPortAgentId: assignedAgentId || undefined,
-      assignedPortAgentName: selectedAgent ? selectedAgent.name : undefined
-    });
+    try {
+      await onAddVessel({
+        vesselName: name,
+        imoNumber: imo,
+        callSign: callSign || 'N/A',
+        flag: flag || 'Unknown',
+        vesselType,
+        grossTonnage: Number(gt),
+        deadweight: Number(dwt),
+        captainDetails: captain || 'TBA',
+        crewCount: Number(crewCount),
+        eta: eta || new Date().toISOString().substring(0, 16),
+        etd: etd || new Date().toISOString().substring(0, 16),
+        currentPort,
+        voyageNumber,
+        status,
+        assignedPortAgentId: assignedAgentId || undefined,
+        assignedPortAgentName: selectedAgent ? selectedAgent.name : undefined
+      });
 
-    // Reset Form
-    setName('');
-    setImo('');
-    setCallSign('');
-    setFlag('');
-    setCaptain('');
-    setVoyageNumber('');
-    setAssignedAgentId('');
-    setShowAddModal(false);
+      // Reset only on success.
+      setName(''); setImo(''); setCallSign(''); setFlag(''); setCaptain('');
+      setVoyageNumber(''); setAssignedAgentId('');
+      setShowAddModal(false);
+    } catch (err) {
+      setAddError(err instanceof Error ? err.message : 'Could not save the vessel. Please try again.');
+    } finally {
+      setAddBusy(false);
+    }
   };
 
   return (
@@ -577,6 +582,11 @@ export default function VesselsView({
 
               </div>
 
+              {addError && (
+                <div className="flex items-start gap-2 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-lg px-3 py-2">
+                  <span className="font-bold">!</span><span>{addError}</span>
+                </div>
+              )}
               <div className="flex items-center justify-end space-x-2 pt-4 border-t border-slate-100">
                 <button
                   type="button"
@@ -587,9 +597,10 @@ export default function VesselsView({
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 bg-[#6C4CE1] hover:bg-[#6C4CE1]/90 text-white rounded-lg font-semibold shadow-md shadow-slate-900/10 cursor-pointer"
+                  disabled={addBusy}
+                  className="px-5 py-2.5 bg-[#6C4CE1] hover:bg-[#6C4CE1]/90 disabled:opacity-60 text-white rounded-lg font-semibold shadow-md shadow-slate-900/10 cursor-pointer"
                 >
-                  Register Vessel log
+                  {addBusy ? 'Saving…' : 'Register Vessel log'}
                 </button>
               </div>
             </form>

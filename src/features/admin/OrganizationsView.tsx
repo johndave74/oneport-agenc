@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Building2, Plus, Mail, AlertTriangle, CheckCircle2, Users, X, Pencil, Trash2, Power, PauseCircle } from 'lucide-react';
+import { Building2, Plus, Mail, AlertTriangle, CheckCircle2, Users, X, Pencil, Trash2, Power, PauseCircle, RotateCcw, ArrowLeft } from 'lucide-react';
 import EmptyState from '@/components/ui/EmptyState';
 import { Organization, User } from '@/types';
 import { AdminApi } from '@/lib/supabase/adminApi';
@@ -11,17 +11,25 @@ interface OrganizationsViewProps {
   currentOrgId?: string;
   onCreateOrganization: (input: { companyName: string; address?: string; licenseId?: string; plan?: string; planStatus?: string; planExpiry?: string | null; enabledModules?: string[] | null }) => Promise<Organization>;
   onUpdateOrganization: (id: string, updates: { companyName?: string; address?: string; licenseId?: string; status?: string; plan?: string; planStatus?: string; planExpiry?: string | null; enabledModules?: string[] | null }) => Promise<Organization>;
-  onDeleteOrganization: (id: string) => Promise<void>;
+  onTrashOrganization: (id: string) => Promise<void>;
+  onRestoreOrganization: (id: string) => Promise<void>;
+  onPurgeOrganization: (id: string) => Promise<void>;
 }
 
-export default function OrganizationsView({ organizations, users, currentOrgId, onCreateOrganization, onUpdateOrganization, onDeleteOrganization }: OrganizationsViewProps) {
+const CONFIRM_PHRASE = 'DELETE ORGANIZATION';
+
+export default function OrganizationsView({ organizations, users, currentOrgId, onCreateOrganization, onUpdateOrganization, onTrashOrganization, onRestoreOrganization, onPurgeOrganization }: OrganizationsViewProps) {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Organization | null>(null);
   const [form, setForm] = useState<{ companyName: string; address: string; licenseId: string; plan: PlanId; planStatus: string }>({ companyName: '', address: '', licenseId: '', plan: 'PROFESSIONAL', planStatus: 'trial' });
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
-  const [deleting, setDeleting] = useState<Organization | null>(null);
-  const [deleteBusy, setDeleteBusy] = useState(false);
+
+  const [showTrash, setShowTrash] = useState(false);
+  const [trashing, setTrashing] = useState<Organization | null>(null);
+  const [purging, setPurging] = useState<Organization | null>(null);
+  const [confirmText, setConfirmText] = useState('');
+  const [actionBusy, setActionBusy] = useState(false);
 
   const [inviteFor, setInviteFor] = useState<Organization | null>(null);
   const [invite, setInvite] = useState({ email: '', name: '', password: '' });
@@ -34,8 +42,9 @@ export default function OrganizationsView({ organizations, users, currentOrgId, 
     return counts;
   }, [users]);
 
-  // OnePort Agency (the platform company) is not a customer — never list it here.
   const customerOrgs = useMemo(() => organizations.filter((o) => !o.isPlatform), [organizations]);
+  const activeOrgs = customerOrgs.filter((o) => !o.deletedAt);
+  const trashedOrgs = customerOrgs.filter((o) => o.deletedAt);
 
   const openCreate = () => { setEditing(null); setForm({ companyName: '', address: '', licenseId: '', plan: 'PROFESSIONAL', planStatus: 'trial' }); setShowForm(true); setMsg(null); };
   const openEdit = (org: Organization) => { setEditing(org); setForm({ companyName: org.companyName, address: org.address || '', licenseId: org.licenseId || '', plan: resolvePlan(org.plan).id, planStatus: org.planStatus || 'active' }); setShowForm(true); setMsg(null); };
@@ -49,7 +58,6 @@ export default function OrganizationsView({ organizations, users, currentOrgId, 
       plan: PLANS[form.plan].name,
       planStatus: form.planStatus,
       enabledModules: modulesForPlan(form.plan),
-      // Start (or restart) the 14-day clock for trials; clear it for paid.
       planExpiry: form.planStatus === 'trial' ? (editing?.planStatus === 'trial' && editing.planExpiry ? editing.planExpiry : trialEndFromNow()) : null,
     };
     try {
@@ -69,48 +77,66 @@ export default function OrganizationsView({ organizations, users, currentOrgId, 
     }
   };
 
-  const confirmDelete = async () => {
-    if (!deleting) return;
-    setDeleteBusy(true);
-    setMsg(null);
+  const doTrash = async () => {
+    if (!trashing || confirmText !== CONFIRM_PHRASE) return;
+    setActionBusy(true); setMsg(null);
     try {
-      await onDeleteOrganization(deleting.id);
-      setMsg({ ok: true, text: `Deleted ${deleting.companyName}.` });
-      setDeleting(null);
-    } catch {
-      setMsg({ ok: false, text: `Couldn't delete ${deleting.companyName} — it still has members or data. Remove those first.` });
-      setDeleting(null);
-    } finally {
-      setDeleteBusy(false);
-    }
+      await onTrashOrganization(trashing.id);
+      setMsg({ ok: true, text: `${trashing.companyName} moved to Trash.` });
+      setTrashing(null); setConfirmText('');
+    } catch (err) {
+      setMsg({ ok: false, text: err instanceof Error ? err.message : 'Could not move to Trash.' });
+    } finally { setActionBusy(false); }
+  };
+
+  const doPurge = async () => {
+    if (!purging || confirmText !== CONFIRM_PHRASE) return;
+    setActionBusy(true); setMsg(null);
+    try {
+      await onPurgeOrganization(purging.id);
+      setMsg({ ok: true, text: `${purging.companyName} permanently deleted.` });
+      setPurging(null); setConfirmText('');
+    } catch (err) {
+      setMsg({ ok: false, text: err instanceof Error ? err.message : 'Could not delete organization.' });
+    } finally { setActionBusy(false); }
   };
 
   const submitInvite = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inviteFor) return;
-    setInviteBusy(true);
-    setInviteMsg(null);
+    setInviteBusy(true); setInviteMsg(null);
     try {
       await AdminApi.createUser({ email: invite.email.trim(), name: invite.name.trim(), password: invite.password, roleKey: 'ORG_ADMIN', organizationId: inviteFor.id });
       setInviteMsg({ ok: true, text: `Admin created for ${inviteFor.companyName}. They can sign in with the email and password you set.` });
       setInvite({ email: '', name: '', password: '' });
     } catch (err) {
       setInviteMsg({ ok: false, text: err instanceof Error ? err.message : 'Could not create admin.' });
-    } finally {
-      setInviteBusy(false);
-    }
+    } finally { setInviteBusy(false); }
   };
 
   return (
     <div className="space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-bold text-slate-900 tracking-tight">Organizations</h2>
-          <p className="text-xs text-slate-500 mt-0.5">Create and manage the companies (tenants) on the platform. Each keeps its own isolated data.</p>
+          <h2 className="text-lg font-bold text-slate-900 tracking-tight">{showTrash ? 'Trash' : 'Organizations'}</h2>
+          <p className="text-xs text-slate-500 mt-0.5">{showTrash ? 'Trashed organizations can be restored, or permanently deleted.' : 'Create and manage the companies (tenants) on the platform. Each keeps its own isolated data.'}</p>
         </div>
-        <button onClick={openCreate} className="bg-[#6C4CE1] hover:bg-[#5839C6] text-white text-xs font-semibold px-3.5 py-2 rounded-lg transition-colors shadow-sm flex items-center gap-1.5 cursor-pointer self-start">
-          <Plus className="h-3.5 w-3.5" /> New Organization
-        </button>
+        <div className="flex items-center gap-2 self-start">
+          {showTrash ? (
+            <button onClick={() => setShowTrash(false)} className="bg-white border border-slate-200 text-slate-700 text-xs font-semibold px-3.5 py-2 rounded-lg hover:bg-slate-50 flex items-center gap-1.5 cursor-pointer">
+              <ArrowLeft className="h-3.5 w-3.5" /> Back to Organizations
+            </button>
+          ) : (
+            <>
+              <button onClick={() => setShowTrash(true)} className="bg-white border border-slate-200 text-slate-600 text-xs font-semibold px-3.5 py-2 rounded-lg hover:bg-slate-50 flex items-center gap-1.5 cursor-pointer">
+                <Trash2 className="h-3.5 w-3.5" /> Trash{trashedOrgs.length > 0 ? ` (${trashedOrgs.length})` : ''}
+              </button>
+              <button onClick={openCreate} className="bg-[#6C4CE1] hover:bg-[#5839C6] text-white text-xs font-semibold px-3.5 py-2 rounded-lg transition-colors shadow-sm flex items-center gap-1.5 cursor-pointer">
+                <Plus className="h-3.5 w-3.5" /> New Organization
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       {msg && (
@@ -120,19 +146,47 @@ export default function OrganizationsView({ organizations, users, currentOrgId, 
         </div>
       )}
 
-      {customerOrgs.length === 0 ? (
+      {/* ---------------------------------------------------------------- Trash view */}
+      {showTrash ? (
+        trashedOrgs.length === 0 ? (
+          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm">
+            <EmptyState icon={Trash2} title="Trash is empty." description="Organizations you move to Trash appear here and can be restored." />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {trashedOrgs.map((org) => (
+              <div key={org.id} className="bg-white border border-slate-200 rounded-2xl shadow-sm p-5 flex flex-col gap-3 opacity-90">
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className="h-10 w-10 rounded-xl bg-slate-100 text-slate-400 flex items-center justify-center shrink-0"><Trash2 className="h-5 w-5" /></span>
+                  <div className="min-w-0">
+                    <h3 className="text-sm font-bold text-slate-700 truncate line-through">{org.companyName}</h3>
+                    <span className="text-[10px] text-slate-400">In Trash{org.deletedAt ? ` since ${org.deletedAt.slice(0, 10)}` : ''}</span>
+                  </div>
+                </div>
+                <p className="text-[11px] text-slate-400">{memberCount[org.id] || 0} member{(memberCount[org.id] || 0) === 1 ? '' : 's'} · {org.deletedBy ? `by ${org.deletedBy}` : ''}</p>
+                <div className="mt-auto pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
+                  <button onClick={() => onRestoreOrganization(org.id)} className="text-[11px] font-semibold text-emerald-600 hover:text-emerald-700 flex items-center gap-1 cursor-pointer">
+                    <RotateCcw className="h-3.5 w-3.5" /> Restore
+                  </button>
+                  <button onClick={() => { setPurging(org); setConfirmText(''); }} className="text-[11px] font-semibold text-rose-600 hover:text-rose-700 flex items-center gap-1 cursor-pointer">
+                    <Trash2 className="h-3.5 w-3.5" /> Delete permanently
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )
+      ) : activeOrgs.length === 0 ? (
         <div className="bg-white border border-slate-200 rounded-2xl shadow-sm">
           <EmptyState icon={Building2} title="No organizations yet." description="Create your first organization to onboard a company onto the platform." action={{ label: 'New Organization', onClick: openCreate }} />
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {customerOrgs.map((org) => (
+          {activeOrgs.map((org) => (
             <div key={org.id} className="bg-white border border-slate-200 rounded-2xl shadow-sm p-5 flex flex-col gap-3">
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-3 min-w-0">
-                  <span className="h-10 w-10 rounded-xl bg-[#6C4CE1]/10 text-[#6C4CE1] flex items-center justify-center shrink-0">
-                    <Building2 className="h-5 w-5" />
-                  </span>
+                  <span className="h-10 w-10 rounded-xl bg-[#6C4CE1]/10 text-[#6C4CE1] flex items-center justify-center shrink-0"><Building2 className="h-5 w-5" /></span>
                   <div className="min-w-0">
                     <h3 className="text-sm font-bold text-slate-800 truncate">{org.companyName}</h3>
                     <span className="text-[10px] text-slate-400 tabular-nums">{org.slug || org.id}</span>
@@ -165,27 +219,19 @@ export default function OrganizationsView({ organizations, users, currentOrgId, 
                 </button>
                 <div className="flex items-center gap-1">
                   {org.status === 'suspended' ? (
-                    <button onClick={() => onUpdateOrganization(org.id, { status: 'active' })} title="Activate" className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors cursor-pointer">
-                      <Power className="h-3.5 w-3.5" />
-                    </button>
+                    <button onClick={() => onUpdateOrganization(org.id, { status: 'active' })} title="Activate" className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors cursor-pointer"><Power className="h-3.5 w-3.5" /></button>
                   ) : (
-                    <button onClick={() => onUpdateOrganization(org.id, { status: 'suspended' })} title="Suspend" className="p-1.5 rounded-lg text-slate-400 hover:text-amber-600 hover:bg-amber-50 transition-colors cursor-pointer">
-                      <PauseCircle className="h-3.5 w-3.5" />
-                    </button>
+                    <button onClick={() => onUpdateOrganization(org.id, { status: 'suspended' })} title="Suspend" className="p-1.5 rounded-lg text-slate-400 hover:text-amber-600 hover:bg-amber-50 transition-colors cursor-pointer"><PauseCircle className="h-3.5 w-3.5" /></button>
                   )}
-                  <button onClick={() => openEdit(org)} title="Edit" className="p-1.5 rounded-lg text-slate-400 hover:text-[#6C4CE1] hover:bg-[#6C4CE1]/10 transition-colors cursor-pointer">
-                    <Pencil className="h-3.5 w-3.5" />
-                  </button>
+                  <button onClick={() => openEdit(org)} title="Edit" className="p-1.5 rounded-lg text-slate-400 hover:text-[#6C4CE1] hover:bg-[#6C4CE1]/10 transition-colors cursor-pointer"><Pencil className="h-3.5 w-3.5" /></button>
                   {(() => {
                     const isOwn = org.id === currentOrgId;
-                    const hasMembers = (memberCount[org.id] || 0) > 0;
-                    const disabled = isOwn || hasMembers;
                     return (
                       <button
-                        onClick={() => !disabled && setDeleting(org)}
-                        disabled={disabled}
-                        title={isOwn ? 'You cannot delete your own organization' : hasMembers ? 'Remove all members before deleting' : 'Delete'}
-                        className={`p-1.5 rounded-lg transition-colors ${disabled ? 'text-slate-200 cursor-not-allowed' : 'text-slate-400 hover:text-rose-600 hover:bg-rose-50 cursor-pointer'}`}
+                        onClick={() => { if (!isOwn) { setTrashing(org); setConfirmText(''); } }}
+                        disabled={isOwn}
+                        title={isOwn ? 'You cannot delete your own organization' : 'Move to Trash'}
+                        className={`p-1.5 rounded-lg transition-colors ${isOwn ? 'text-slate-200 cursor-not-allowed' : 'text-slate-400 hover:text-rose-600 hover:bg-rose-50 cursor-pointer'}`}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
@@ -246,24 +292,42 @@ export default function OrganizationsView({ organizations, users, currentOrgId, 
         </div>
       )}
 
-      {/* Delete confirm */}
-      {deleting && (
-        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-sm overflow-hidden">
-            <div className="p-5 space-y-3">
-              <div className="h-10 w-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center"><Trash2 className="h-5 w-5" /></div>
-              <h4 className="text-sm font-bold text-slate-800">Delete {deleting.companyName}?</h4>
-              <p className="text-xs text-slate-500 leading-relaxed">This permanently removes the organization. This can't be undone.</p>
-              <div className="flex items-center justify-end gap-2 pt-2">
-                <button onClick={() => setDeleting(null)} className="px-4 py-2 border border-slate-200 rounded-lg text-slate-600 text-xs font-semibold hover:bg-slate-50 cursor-pointer">Cancel</button>
-                <button onClick={confirmDelete} disabled={deleteBusy} className={`px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-semibold shadow-sm flex items-center gap-1.5 ${deleteBusy ? 'opacity-70' : ''}`}>
-                  <Trash2 className="h-3.5 w-3.5" /> {deleteBusy ? 'Deleting…' : 'Delete'}
-                </button>
+      {/* Move to Trash / Permanent delete — type-to-confirm */}
+      {(trashing || purging) && (() => {
+        const org = (trashing || purging)!;
+        const permanent = !!purging;
+        return (
+          <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden">
+              <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+                <h4 className="text-sm font-bold text-slate-800 flex items-center gap-2"><AlertTriangle className="h-4.5 w-4.5 text-rose-600" /> {permanent ? 'Delete permanently' : 'Delete organization'}</h4>
+                <button onClick={() => { setTrashing(null); setPurging(null); setConfirmText(''); }} className="text-slate-400 hover:text-slate-600 cursor-pointer"><X className="h-4 w-4" /></button>
+              </div>
+              <div className="p-5 space-y-3 text-xs">
+                {permanent ? (
+                  <p className="text-slate-600 leading-relaxed"><strong className="text-slate-800">{org.companyName}</strong> and <strong>all its users and data</strong> will be permanently deleted. This <strong>cannot be undone</strong>.</p>
+                ) : (
+                  <p className="text-slate-600 leading-relaxed"><strong className="text-slate-800">{org.companyName}</strong> will be moved to <strong>Trash</strong>. You can restore it anytime, or delete it permanently from Trash. Its {memberCount[org.id] || 0} member{(memberCount[org.id] || 0) === 1 ? '' : 's'} will lose access while it's trashed.</p>
+                )}
+                <div className="space-y-1">
+                  <label className="text-slate-600">Type <strong>{CONFIRM_PHRASE}</strong> to confirm.</label>
+                  <input autoFocus value={confirmText} onChange={(e) => setConfirmText(e.target.value)} placeholder={CONFIRM_PHRASE} className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-1 focus:ring-rose-500 focus:border-rose-500 focus:outline-none tracking-wide" />
+                </div>
+                <div className="flex items-center justify-end gap-2 pt-1">
+                  <button onClick={() => { setTrashing(null); setPurging(null); setConfirmText(''); }} className="px-4 py-2 border border-slate-200 rounded-lg text-slate-600 font-semibold hover:bg-slate-50 cursor-pointer">Cancel</button>
+                  <button
+                    onClick={permanent ? doPurge : doTrash}
+                    disabled={confirmText !== CONFIRM_PHRASE || actionBusy}
+                    className="px-4 py-2 bg-rose-600 hover:bg-rose-500 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-lg font-semibold shadow-sm flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" /> {actionBusy ? 'Working…' : permanent ? 'Delete forever' : 'Move to trash'}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Invite admin modal */}
       {inviteFor && (

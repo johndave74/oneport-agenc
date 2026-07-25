@@ -67,4 +67,5 @@ export const AdminApi = {
   inviteUser: (input: InviteInput) => invoke({ action: 'invite_create', ...input }),
   acceptInvite: () => invoke({ action: 'invite_accept' }),
   resetWorkspace: (organizationId?: string) => invoke({ action: 'reset_workspace', confirm: 'RESET', organizationId }),
+  purgeOrganization: (organizationId: string) => invoke({ action: 'purge_organization', organizationId, confirm: 'DELETE ORGANIZATION' }),
 };

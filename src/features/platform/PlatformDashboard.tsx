@@ -25,7 +25,7 @@ export default function PlatformDashboard({ organizations, users, auditLogs, use
   const firstName = userName.split(' ')[0];
   const today = todayStr();
 
-  const customerOrgs = useMemo(() => organizations.filter((o) => !o.isPlatform), [organizations]);
+  const customerOrgs = useMemo(() => organizations.filter((o) => !o.isPlatform && !o.deletedAt), [organizations]);
   const stats = useMemo(() => {
     const platformTeam = users.filter((u) => !!u.platformRole).length;
     const orgUsers = users.filter((u) => !u.platformRole).length;

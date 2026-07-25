@@ -314,7 +314,13 @@ $$;
 create function public.set_org_id()
 returns trigger language plpgsql security definer set search_path = public as $$
 begin
-  if new."organizationId" is null then new."organizationId" := public.current_user_org(); end if;
+  -- Regular users: always stamp their own org (ignore the 'org-1' default so
+  -- RLS accepts the insert). Platform admins may target any org.
+  if public.is_platform_admin() then
+    if new."organizationId" is null then new."organizationId" := public.current_user_org(); end if;
+  else
+    new."organizationId" := public.current_user_org();
+  end if;
   return new;
 end $$;
 
