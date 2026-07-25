@@ -167,6 +167,8 @@ export interface Document {
   uploadedAt: string;
   version: number;
   category: string;
+  storagePath?: string;
+  mimeType?: string;
 }
 
 export interface Expense {

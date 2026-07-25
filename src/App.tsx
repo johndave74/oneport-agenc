@@ -340,6 +340,8 @@ export default function App() {
 
   const handleDeleteDocument = async (id: string) => {
     if (!currentUser) return;
+    const doc = documents.find(d => d.id === id);
+    if (doc?.storagePath) { try { await Db.deleteDocumentFile(doc.storagePath); } catch (e) { console.error('file delete failed', e); } }
     await Db.deleteDocument(id);
     setDocuments(prev => prev.filter(d => d.id !== id));
   };
@@ -608,7 +610,7 @@ export default function App() {
       case 'vessels': return <VesselsView vessels={vessels} users={users} onAddVessel={handleAddVessel} onEditVessel={handleEditVessel} onDeleteVessel={handleDeleteVessel} onUpdateVesselStatus={handleUpdateVesselStatus} userRole={viewRole} />;
       case 'voyages': return <VoyagesView voyages={voyages} vessels={vessels} users={users} tasks={tasks} documents={documents} expenses={expenses} laytimeCalculations={laytimeCalculations} onAddVoyage={handleAddVoyage} onAddVessel={handleAddVessel} onUpdateCargoDetails={handleUpdateCargoDetails} onDeleteVoyage={handleDeleteVoyage} onToggleTimelineEvent={handleToggleTimelineEvent} setView={setView} userRole={viewRole} />;
       case 'tasks': return <TasksView tasks={tasks} voyages={voyages} onAddTask={handleAddTask} onUpdateTaskStatus={handleUpdateTaskStatus} userRole={viewRole} />;
-      case 'documents': return <DocumentsView documents={documents} voyages={voyages} onUploadDocument={handleUploadDocument} onDeleteDocument={handleDeleteDocument} userName={currentUser.name} />;
+      case 'documents': return <DocumentsView documents={documents} voyages={voyages} orgId={currentUser.organizationId} onUploadDocument={handleUploadDocument} onDeleteDocument={handleDeleteDocument} userName={currentUser.name} />;
       case 'expenses': return <ExpensesView expenses={expenses} voyages={voyages} documents={documents} users={users} currentUserId={currentUser.id} onUploadDocument={handleUploadDocument} onDeleteDocument={handleDeleteDocument} onAddExpense={handleAddExpense} onApproveExpense={handleApproveExpense} onRejectExpense={handleRejectExpense} userRole={viewRole} userName={currentUser.name} />;
       case 'messages': return <MessagesView messages={messages} voyages={voyages} onSendMessage={handleSendMessage} userRole={viewRole} userName={currentUser.name} />;
       case 'crm': return <CrmView users={users} vessels={vessels} currentUser={currentUser} onSendMessage={handleSendMessage} onUpdateVessel={handleEditVessel} onAddNotification={handleAddNotification} onAddAuditLog={handleAddAuditLog} />;

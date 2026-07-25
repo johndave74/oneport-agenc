@@ -199,6 +199,26 @@ export const Db = {
     if (error) throw new Error(error.message);
   },
 
+  // ---- Document file storage (Supabase Storage, private bucket) ----
+  async uploadDocumentFile(orgId: string, file: File): Promise<string> {
+    const clean = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const path = `${orgId}/${Date.now()}_${clean}`;
+    const { error } = await supabase.storage.from('documents').upload(path, file, { upsert: false, contentType: file.type || undefined });
+    if (error) throw new Error(error.message);
+    return path;
+  },
+
+  async getDocumentUrl(storagePath: string): Promise<string> {
+    const { data, error } = await supabase.storage.from('documents').createSignedUrl(storagePath, 3600);
+    if (error) throw new Error(error.message);
+    return data.signedUrl;
+  },
+
+  async deleteDocumentFile(storagePath: string): Promise<void> {
+    const { error } = await supabase.storage.from('documents').remove([storagePath]);
+    if (error) throw new Error(error.message);
+  },
+
   // ----------------------------------------------------------- Expenses
   async getExpenses(): Promise<Expense[]> {
     const res = await supabase.from('expenses').select('*');
