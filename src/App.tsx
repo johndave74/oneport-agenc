@@ -288,6 +288,17 @@ export default function App() {
 
   const handleUpdateCargoDetails = async (id: string, updates: Partial<Voyage>) => {
     if (!currentUser) return;
+    // If milestones or SOF changed, auto-advance status and sync the vessel.
+    if ('sofEvents' in updates || 'timeline' in updates) {
+      const voyage = voyages.find(v => v.id === id);
+      const timeline = ('timeline' in updates ? updates.timeline : voyage?.timeline) || [];
+      const sof = ('sofEvents' in updates ? updates.sofEvents : voyage?.sofEvents) || [];
+      const status = deriveVoyageStatus(timeline, sof);
+      updates = { ...updates, status };
+      if (voyage?.vesselId) {
+        try { const uv = await Db.updateVesselStatus(voyage.vesselId, status as VesselStatus); setVessels(prev => prev.map(v => v.id === voyage.vesselId ? uv : v)); } catch (e) { console.error('vessel sync failed', e); }
+      }
+    }
     const updated = await Db.updateVoyage(id, updates);
     setVoyages(prev => prev.map(v => v.id === id ? updated : v));
   };
@@ -313,8 +324,8 @@ export default function App() {
     if (!voyage) return;
     const timeline = [...voyage.timeline];
     timeline[eventIndex] = { ...timeline[eventIndex], completed: !timeline[eventIndex].completed, timestamp: new Date().toISOString() };
-    // Auto-advance the port call status from the milestones, and keep the vessel in sync.
-    const status = deriveVoyageStatus(timeline);
+    // Auto-advance the port call status from milestones + SOF, and keep the vessel in sync.
+    const status = deriveVoyageStatus(timeline, voyage.sofEvents);
     const updated = await Db.updateVoyage(voyageId, { timeline, status });
     setVoyages(prev => prev.map(v => v.id === voyageId ? updated : v));
     if (voyage.vesselId) {

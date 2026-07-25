@@ -1,7 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Vessel, Voyage, Task, User } from '@/types';
 import { motion } from 'motion/react';
-import { Calendar, Ship, Anchor, Clock, AlertTriangle, Users } from 'lucide-react';
+import { Calendar, Ship, Anchor, Clock, AlertTriangle, Users, ChevronLeft, ChevronRight, ArrowDownToLine, ArrowUpFromLine } from 'lucide-react';
+
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+function dayKey(d: Date): string { const p = (n: number) => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; }
 
 interface PlanningCenterViewProps {
   vessels: Vessel[];
@@ -20,6 +23,18 @@ const TAB_LABELS: Record<'schedule' | 'berth' | 'services' | 'resources' | 'cale
 
 export default function PlanningCenterView({ vessels, voyages, tasks, users }: PlanningCenterViewProps) {
   const [activeTab, setActiveTab] = useState<'schedule' | 'berth' | 'services' | 'resources' | 'calendar'>('schedule');
+  const [calMonth, setCalMonth] = useState(() => { const d = new Date(); d.setDate(1); d.setHours(0, 0, 0, 0); return d; });
+
+  // Calendar events keyed by day (arrivals, departures, task due dates).
+  const eventsByDay = useMemo(() => {
+    const map: Record<string, { label: string; kind: 'arrival' | 'departure' | 'task' }[]> = {};
+    const add = (date: string | undefined, label: string, kind: 'arrival' | 'departure' | 'task') => {
+      if (!date) return; const k = date.slice(0, 10); (map[k] ||= []).push({ label, kind });
+    };
+    voyages.forEach((v) => { add(v.actualEta || v.eta, `${v.vesselName} arrives`, 'arrival'); add(v.actualEtd || v.etd, `${v.vesselName} departs`, 'departure'); });
+    tasks.forEach((t) => add(t.dueDate, t.title, 'task'));
+    return map;
+  }, [voyages, tasks]);
 
   // Helper calculations
   const upcomingArrivals = voyages.filter(v => new Date(v.eta) >= new Date()).sort((a, b) => new Date(a.eta).getTime() - new Date(b.eta).getTime());
@@ -235,51 +250,61 @@ export default function PlanningCenterView({ vessels, voyages, tasks, users }: P
             </motion.div>
           )}
 
-          {activeTab === 'calendar' && (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-              <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center">
-                <Calendar className="w-5 h-5 mr-2 text-[#6C4CE1]" />
-                Calendar
-              </h3>
-              {(() => {
-                type CalEntry = { date: string; label: string; kind: 'voyage' | 'task' };
-                const entries: CalEntry[] = [
-                  ...voyages.filter(v => v.eta).map(v => ({ date: v.eta, label: `${v.vesselName} arrives — ${v.voyageNumber}`, kind: 'voyage' as const })),
-                  ...tasks.filter(t => t.dueDate).map(t => ({ date: t.dueDate, label: `${t.title} (Voyage ${t.voyageNumber})`, kind: 'task' as const }))
-                ].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-                const groups = entries.reduce((acc: Record<string, CalEntry[]>, e) => {
-                  const day = new Date(e.date).toDateString();
-                  acc[day] = acc[day] || [];
-                  acc[day].push(e);
-                  return acc;
-                }, {});
-                const days = Object.keys(groups);
-
-                if (days.length === 0) {
-                  return <div className="text-center py-10 text-slate-500 font-medium">No scheduled voyages or tasks.</div>;
-                }
-
-                return (
-                  <div className="space-y-4">
-                    {days.map(day => (
-                      <div key={day} className="border border-slate-200 rounded-xl overflow-hidden">
-                        <div className="bg-slate-50 px-4 py-2 text-xs font-bold text-slate-700">{new Date(day).toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</div>
-                        <div className="divide-y divide-slate-100">
-                          {groups[day].map((e, idx) => (
-                            <div key={idx} className="px-4 py-2.5 flex items-center gap-2 text-xs">
-                              {e.kind === 'voyage' ? <Ship className="w-3.5 h-3.5 text-[#6C4CE1] shrink-0" /> : <Clock className="w-3.5 h-3.5 text-amber-500 shrink-0" />}
-                              <span className="text-slate-700">{e.label}</span>
-                            </div>
-                          ))}
+          {activeTab === 'calendar' && (() => {
+            const monthStart = new Date(calMonth.getFullYear(), calMonth.getMonth(), 1);
+            const gridStart = new Date(monthStart); gridStart.setDate(1 - monthStart.getDay());
+            const cells = [...Array(42)].map((_, i) => { const d = new Date(gridStart); d.setDate(gridStart.getDate() + i); return d; });
+            const todayKey = dayKey(new Date());
+            const KIND = {
+              arrival: { icon: ArrowDownToLine, cls: 'bg-amber-50 text-amber-700' },
+              departure: { icon: ArrowUpFromLine, cls: 'bg-sky-50 text-sky-700' },
+              task: { icon: Clock, cls: 'bg-[#6C4CE1]/10 text-[#6C4CE1]' },
+            } as const;
+            return (
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div className="flex items-center justify-between p-4 border-b border-slate-100">
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1">
+                      <button onClick={() => setCalMonth(new Date(calMonth.getFullYear(), calMonth.getMonth() - 1, 1))} className="p-1.5 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 cursor-pointer"><ChevronLeft className="h-4 w-4" /></button>
+                      <button onClick={() => setCalMonth(new Date(calMonth.getFullYear(), calMonth.getMonth() + 1, 1))} className="p-1.5 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 cursor-pointer"><ChevronRight className="h-4 w-4" /></button>
+                    </div>
+                    <h3 className="text-base font-bold text-slate-800">{calMonth.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</h3>
+                    <button onClick={() => { const d = new Date(); d.setDate(1); d.setHours(0, 0, 0, 0); setCalMonth(d); }} className="text-xs font-semibold text-[#6C4CE1] hover:underline cursor-pointer">Today</button>
+                  </div>
+                  <div className="flex items-center gap-3 text-[10px] text-slate-400">
+                    <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-amber-400" />Arrival</span>
+                    <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-sky-400" />Departure</span>
+                    <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-[#6C4CE1]" />Task</span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-7 border-b border-slate-100 bg-slate-50/50">
+                  {WEEKDAYS.map((w) => <div key={w} className="py-2 text-center text-[10px] font-bold uppercase tracking-wider text-slate-400">{w}</div>)}
+                </div>
+                <div className="grid grid-cols-7">
+                  {cells.map((d, i) => {
+                    const k = dayKey(d);
+                    const inMonth = d.getMonth() === calMonth.getMonth();
+                    const isToday = k === todayKey;
+                    const evs = eventsByDay[k] || [];
+                    return (
+                      <div key={i} className={`min-h-[92px] border-b border-r border-slate-100 p-1.5 ${inMonth ? 'bg-white' : 'bg-slate-50/40'} ${i % 7 === 0 ? 'border-l' : ''}`}>
+                        <div className="flex justify-end">
+                          <span className={`text-[11px] font-semibold h-5 w-5 flex items-center justify-center rounded-full ${isToday ? 'bg-[#6C4CE1] text-white' : inMonth ? 'text-slate-600' : 'text-slate-300'}`}>{d.getDate()}</span>
+                        </div>
+                        <div className="space-y-0.5 mt-0.5">
+                          {evs.slice(0, 3).map((e, j) => {
+                            const K = KIND[e.kind];
+                            return <div key={j} className={`text-[9px] font-semibold px-1.5 py-0.5 rounded flex items-center gap-1 truncate ${K.cls}`} title={e.label}><K.icon className="h-2.5 w-2.5 shrink-0" /><span className="truncate">{e.label}</span></div>;
+                          })}
+                          {evs.length > 3 && <div className="text-[9px] text-slate-400 px-1.5">+{evs.length - 3} more</div>}
                         </div>
                       </div>
-                    ))}
-                  </div>
-                );
-              })()}
-            </motion.div>
-          )}
+                    );
+                  })}
+                </div>
+              </motion.div>
+            );
+          })()}
         </div>
 
         <div className="space-y-6">

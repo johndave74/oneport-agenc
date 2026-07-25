@@ -6,12 +6,19 @@
 export type DerivedStatus = 'Scheduled' | 'Arriving' | 'Berthed' | 'Cargo Operations' | 'Departing' | 'Completed';
 
 interface Milestone { event: string; completed: boolean }
+interface SofEvent { eventDescription: string }
 
-export function deriveVoyageStatus(timeline: Milestone[]): DerivedStatus {
-  if (!timeline || timeline.length === 0) return 'Scheduled';
-  if (timeline.every((t) => t.completed)) return 'Completed';
+// Signals come from BOTH completed milestones and logged SOF events, so logging
+// facts (NOR tendered, all fast, cargo commenced…) advances status too.
+export function deriveVoyageStatus(timeline: Milestone[] = [], sofEvents: SofEvent[] = []): DerivedStatus {
+  const allMilestonesDone = timeline.length > 0 && timeline.every((t) => t.completed);
+  if (allMilestonesDone) return 'Completed';
 
-  const done = timeline.filter((t) => t.completed).map((t) => t.event.toLowerCase());
+  const done = [
+    ...timeline.filter((t) => t.completed).map((t) => t.event),
+    ...sofEvents.map((e) => e.eventDescription),
+  ].map((s) => (s || '').toLowerCase());
+  if (done.length === 0) return 'Scheduled';
   const any = (pred: (e: string) => boolean) => done.some(pred);
 
   if (any((e) => e.includes('sail') || e.includes('departed') || (e.includes('departure') && e.includes('complet')))) return 'Completed';
