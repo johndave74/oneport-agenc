@@ -19,6 +19,7 @@ import {
   CrewMember,
   Tariff,
   Invoice,
+  Service,
 } from '@/types';
 
 function unwrap<T>({ data, error }: { data: T | null; error: { message: string } | null }): T {
@@ -429,6 +430,28 @@ export const Db = {
 
   async deleteInvoice(id: string): Promise<void> {
     const { error } = await supabase.from('invoices').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+  },
+
+  // ----------------------------------------------------------- Services
+  async getServices(): Promise<Service[]> {
+    const res = await supabase.from('services').select('*');
+    return unwrap(res as any);
+  },
+
+  async addService(service: Omit<Service, 'id' | 'createdAt'>): Promise<Service> {
+    const item: Service = { id: `svc-${Date.now()}`, ...service, createdAt: new Date().toISOString() };
+    const res = await supabase.from('services').insert(item).select().single();
+    return unwrap(res as any);
+  },
+
+  async updateServiceStatus(id: string, status: Service['status']): Promise<Service> {
+    const res = await supabase.from('services').update({ status }).eq('id', id).select().single();
+    return unwrap(res as any);
+  },
+
+  async deleteService(id: string): Promise<void> {
+    const { error } = await supabase.from('services').delete().eq('id', id);
     if (error) throw new Error(error.message);
   },
 };

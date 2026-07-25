@@ -22,6 +22,7 @@ import {
   Invoice,
   InvoiceStatus,
   Organization,
+  Service,
   ROLE_ALLOWED_VIEWS
 } from '@/types';
 import { computeCommandKpis } from '@/features/dashboard/kpis';
@@ -119,6 +120,7 @@ export default function App() {
   const [tariffs, setTariffs] = useState<Tariff[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
 
   const clearWorkspaceData = () => {
     setUsers([]);
@@ -138,6 +140,7 @@ export default function App() {
     setTariffs([]);
     setInvoices([]);
     setOrganizations([]);
+    setServices([]);
     setPermissions(new Set());
   };
 
@@ -146,12 +149,12 @@ export default function App() {
       usersData, vesselsData, voyagesData, tasksData, documentsData,
       expensesData, messagesData, notificationsData, incidentsData, auditLogsData,
       laytimeCalculationsData, orgData, partnersData, crewMembersData, tariffsData, invoicesData,
-      organizationsData
+      organizationsData, servicesData
     ] = await Promise.all([
       Db.getUsers(), Db.getVessels(), Db.getVoyages(), Db.getTasks(), Db.getDocuments(),
       Db.getExpenses(), Db.getMessages(), Db.getNotifications(), Db.getIncidents(), Db.getAuditLogs(),
       Db.getLaytimeCalculations(), Db.getOrg(activeOrgId), Db.getPartners(), Db.getCrewMembers(), Db.getTariffs(), Db.getInvoices(),
-      Db.getOrganizations()
+      Db.getOrganizations(), Db.getServices()
     ]);
     setUsers(usersData);
     setVessels(vesselsData);
@@ -170,6 +173,7 @@ export default function App() {
     setTariffs(tariffsData);
     setInvoices(invoicesData);
     setOrganizations(organizationsData);
+    setServices(servicesData);
   }, []);
 
   // Restore session on load, and keep currentUser in sync with auth state.
@@ -316,6 +320,7 @@ export default function App() {
     setMessages(prev => prev.filter(m => m.voyageId !== id));
     setIncidents(prev => prev.filter(i => i.voyageId !== id));
     setLaytimeCalculations(prev => prev.filter(l => l.voyageId !== id));
+    setServices(prev => prev.filter(s => s.voyageId !== id));
   };
 
   const handleToggleTimelineEvent = async (voyageId: string, eventIndex: number) => {
@@ -577,6 +582,24 @@ export default function App() {
     setInvoices(prev => prev.filter(i => i.id !== id));
   };
 
+  const handleAddService = async (service: Omit<Service, 'id' | 'createdAt'>) => {
+    if (!currentUser) return;
+    const item = await Db.addService(service);
+    setServices(prev => [...prev, item]);
+  };
+
+  const handleUpdateServiceStatus = async (id: string, status: Service['status']) => {
+    if (!currentUser) return;
+    const updated = await Db.updateServiceStatus(id, status);
+    setServices(prev => prev.map(s => s.id === id ? updated : s));
+  };
+
+  const handleDeleteService = async (id: string) => {
+    if (!currentUser) return;
+    await Db.deleteService(id);
+    setServices(prev => prev.filter(s => s.id !== id));
+  };
+
   // Falls back to the role's documented defaults until live grants load, so the
   // app never renders with an empty permission set mid-fetch.
   const effectivePermissions = useMemo<Set<Permission>>(() => {
@@ -625,10 +648,10 @@ export default function App() {
     }
 
     switch (currentView) {
-      case 'planning': return <PlanningCenterView vessels={vessels} voyages={voyages} tasks={tasks} users={users} />;
+      case 'planning': return <PlanningCenterView vessels={vessels} voyages={voyages} tasks={tasks} users={users} services={services} partners={partners} onAddService={handleAddService} onUpdateServiceStatus={handleUpdateServiceStatus} onDeleteService={handleDeleteService} />;
       case 'dashboard': return <DashboardView userRole={viewRole} userName={currentUser.name} currentUserId={currentUser.id} vessels={vessels} voyages={voyages} tasks={tasks} expenses={expenses} incidents={incidents} users={users} laytimeCalculations={laytimeCalculations} invoices={invoices} partners={partners} crewMembers={crewMembers} auditLogs={auditLogs} notifications={notifications} onCompleteTask={handleCompleteTask} onApproveExpense={handleApproveExpense} onRejectExpense={handleRejectExpense} onCreateIncident={handleCreateIncident} onMarkAllNotificationsRead={handleMarkAllNotificationsRead} setView={setView} />;
       case 'vessels': return <VesselsView vessels={vessels} users={users} onAddVessel={handleAddVessel} onEditVessel={handleEditVessel} onDeleteVessel={handleDeleteVessel} onUpdateVesselStatus={handleUpdateVesselStatus} userRole={viewRole} />;
-      case 'voyages': return <VoyagesView voyages={voyages} vessels={vessels} users={users} tasks={tasks} documents={documents} expenses={expenses} laytimeCalculations={laytimeCalculations} onAddVoyage={handleAddVoyage} onAddVessel={handleAddVessel} onUpdateCargoDetails={handleUpdateCargoDetails} onDeleteVoyage={handleDeleteVoyage} onToggleTimelineEvent={handleToggleTimelineEvent} setView={setView} orgName={org.companyName} userRole={viewRole} />;
+      case 'voyages': return <VoyagesView voyages={voyages} vessels={vessels} users={users} tasks={tasks} documents={documents} expenses={expenses} laytimeCalculations={laytimeCalculations} services={services} onAddVoyage={handleAddVoyage} onAddVessel={handleAddVessel} onUpdateCargoDetails={handleUpdateCargoDetails} onDeleteVoyage={handleDeleteVoyage} onToggleTimelineEvent={handleToggleTimelineEvent} setView={setView} orgName={org.companyName} userRole={viewRole} />;
       case 'tasks': return <TasksView tasks={tasks} voyages={voyages} onAddTask={handleAddTask} onUpdateTaskStatus={handleUpdateTaskStatus} userRole={viewRole} />;
       case 'documents': return <DocumentsView documents={documents} voyages={voyages} orgId={currentUser.organizationId} onUploadDocument={handleUploadDocument} onDeleteDocument={handleDeleteDocument} userName={currentUser.name} />;
       case 'expenses': return <ExpensesView expenses={expenses} voyages={voyages} documents={documents} users={users} currentUserId={currentUser.id} orgId={currentUser.organizationId} orgName={org.companyName} onUploadDocument={handleUploadDocument} onDeleteDocument={handleDeleteDocument} onAddExpense={handleAddExpense} onApproveExpense={handleApproveExpense} onRejectExpense={handleRejectExpense} userRole={viewRole} userName={currentUser.name} />;

@@ -13,7 +13,7 @@ import {
   Briefcase,
   Trash2
 } from 'lucide-react';
-import { Voyage, UserRole, Vessel, User, Task, Document, Expense, LaytimeCalculation, SOFEvent } from '@/types';
+import { Voyage, UserRole, Vessel, User, Task, Document, Expense, LaytimeCalculation, SOFEvent, Service } from '@/types';
 import StatementOfFacts from './StatementOfFacts';
 import { printDocument, norHtml, lorHtml } from '@/lib/documents/generate';
 import { FileCheck2 } from 'lucide-react';
@@ -26,6 +26,7 @@ interface VoyagesViewProps {
   documents?: Document[];
   expenses?: Expense[];
   laytimeCalculations?: LaytimeCalculation[];
+  services?: Service[];
   onAddVoyage: (voyage: Omit<Voyage, 'id'>) => void;
   onAddVessel: (vessel: Omit<Vessel, 'id'>) => Promise<Vessel>;
   onUpdateCargoDetails: (id: string, updates: Partial<Voyage>) => void;
@@ -49,6 +50,7 @@ export default function VoyagesView({
   documents = [],
   expenses = [],
   laytimeCalculations = [],
+  services = [],
   onAddVoyage,
   onAddVessel,
   onUpdateCargoDetails,
@@ -612,6 +614,7 @@ export default function VoyagesView({
                   { label: 'Tasks', count: tasks.filter(t => t.voyageId === selectedVoyage.id).length, view: 'tasks' },
                   { label: 'Documents', count: documents.filter(d => d.voyageId === selectedVoyage.id).length, view: 'documents' },
                   { label: 'Expenses', count: expenses.filter(e => e.voyageId === selectedVoyage.id).length, view: 'expenses' },
+                  { label: 'Services', count: services.filter(s => s.voyageId === selectedVoyage.id).length, view: 'planning' },
                   { label: 'Laytime', count: laytimeCalculations.filter(l => l.voyageId === selectedVoyage.id).length, view: 'laytime' },
                 ].map((x) => (
                   <button key={x.label} onClick={() => setView?.(x.view)} className="bg-slate-50 border border-slate-100 rounded-lg p-3 text-left hover:border-[#6C4CE1]/30 hover:bg-white transition-all cursor-pointer">

@@ -313,6 +313,22 @@ export interface Invoice {
   createdAt: string;
 }
 
+export type ServiceStatus = 'Requested' | 'Confirmed' | 'In Progress' | 'Completed' | 'Cancelled';
+
+export interface Service {
+  id: string;
+  voyageId: string;
+  voyageNumber: string;
+  serviceType: string;
+  providerId?: string | null;
+  providerName?: string;
+  scheduledAt?: string;
+  status: ServiceStatus;
+  notes?: string;
+  organizationId?: string;
+  createdAt: string;
+}
+
 export const ROLE_ALLOWED_VIEWS: Record<UserRole, string[]> = {
   PORT_AGENT: ['dashboard', 'planning', 'vessels', 'voyages', 'tasks', 'crew', 'documents', 'expenses', 'invoices', 'tariffs', 'approvals', 'crm', 'partners', 'messages', 'reports', 'notifications', 'settings'],
   SHIP_AGENT: ['dashboard', 'planning', 'vessels', 'voyages', 'crew', 'documents', 'expenses', 'invoices', 'tariffs', 'approvals', 'laytime', 'crm', 'partners', 'messages', 'reports', 'notifications', 'settings'],

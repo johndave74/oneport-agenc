@@ -1,40 +1,66 @@
 import React, { useState, useMemo } from 'react';
-import { Vessel, Voyage, Task, User } from '@/types';
+import { Vessel, Voyage, Task, User, Service, ServiceStatus, Partner } from '@/types';
 import { motion } from 'motion/react';
-import { Calendar, Ship, Anchor, Clock, AlertTriangle, Users, ChevronLeft, ChevronRight, ArrowDownToLine, ArrowUpFromLine } from 'lucide-react';
+import { Calendar, Ship, Anchor, Clock, AlertTriangle, ChevronLeft, ChevronRight, ArrowDownToLine, ArrowUpFromLine, Plus, Trash2, Wrench, X } from 'lucide-react';
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 function dayKey(d: Date): string { const p = (n: number) => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; }
+
+const SERVICE_TYPES = ['Pilotage', 'Tug Services', 'Mooring / Unmooring', 'Bunkering', 'Fresh Water', 'Waste Disposal', 'Customs Clearance', 'Immigration', 'Surveyor', 'Chandlery', 'Crew Transport'];
+const SERVICE_STATUSES: ServiceStatus[] = ['Requested', 'Confirmed', 'In Progress', 'Completed', 'Cancelled'];
+const SERVICE_STATUS_COLOR: Record<ServiceStatus, string> = {
+  Requested: 'bg-slate-100 text-slate-700', Confirmed: 'bg-sky-100 text-sky-700', 'In Progress': 'bg-amber-100 text-amber-700', Completed: 'bg-emerald-100 text-emerald-700', Cancelled: 'bg-rose-100 text-rose-700',
+};
 
 interface PlanningCenterViewProps {
   vessels: Vessel[];
   voyages: Voyage[];
   tasks: Task[];
   users: User[];
+  services: Service[];
+  partners: Partner[];
+  onAddService: (s: Omit<Service, 'id' | 'createdAt'>) => void;
+  onUpdateServiceStatus: (id: string, status: ServiceStatus) => void;
+  onDeleteService: (id: string) => void;
 }
 
-const TAB_LABELS: Record<'schedule' | 'berth' | 'services' | 'resources' | 'calendar', string> = {
+const TAB_LABELS: Record<'schedule' | 'berth' | 'services' | 'calendar', string> = {
   schedule: 'Timeline',
   berth: 'Port Assignment',
   services: 'Services',
-  resources: 'Resources',
   calendar: 'Calendar'
 };
 
-export default function PlanningCenterView({ vessels, voyages, tasks, users }: PlanningCenterViewProps) {
-  const [activeTab, setActiveTab] = useState<'schedule' | 'berth' | 'services' | 'resources' | 'calendar'>('schedule');
+export default function PlanningCenterView({ vessels, voyages, tasks, users, services, partners, onAddService, onUpdateServiceStatus, onDeleteService }: PlanningCenterViewProps) {
+  const [activeTab, setActiveTab] = useState<'schedule' | 'berth' | 'services' | 'calendar'>('schedule');
+  const [svcModal, setSvcModal] = useState(false);
+  const [svcForm, setSvcForm] = useState({ voyageId: '', serviceType: SERVICE_TYPES[0], providerId: '', scheduledAt: '', notes: '' });
+  const providers = partners.filter((p) => p.type === 'Vendor' || p.type === 'Port Authority' || p.type === 'Terminal');
+  const submitService = () => {
+    if (!svcForm.voyageId) return;
+    const voy = voyages.find((v) => v.id === svcForm.voyageId);
+    const provider = providers.find((p) => p.id === svcForm.providerId);
+    onAddService({
+      voyageId: svcForm.voyageId, voyageNumber: voy?.voyageNumber || 'TBA', serviceType: svcForm.serviceType,
+      providerId: svcForm.providerId || null, providerName: provider?.name, scheduledAt: svcForm.scheduledAt || undefined,
+      status: 'Requested', notes: svcForm.notes || undefined,
+    });
+    setSvcForm({ voyageId: '', serviceType: SERVICE_TYPES[0], providerId: '', scheduledAt: '', notes: '' });
+    setSvcModal(false);
+  };
   const [calMonth, setCalMonth] = useState(() => { const d = new Date(); d.setDate(1); d.setHours(0, 0, 0, 0); return d; });
 
   // Calendar events keyed by day (arrivals, departures, task due dates).
   const eventsByDay = useMemo(() => {
-    const map: Record<string, { label: string; kind: 'arrival' | 'departure' | 'task' }[]> = {};
-    const add = (date: string | undefined, label: string, kind: 'arrival' | 'departure' | 'task') => {
+    const map: Record<string, { label: string; kind: 'arrival' | 'departure' | 'task' | 'service' }[]> = {};
+    const add = (date: string | undefined, label: string, kind: 'arrival' | 'departure' | 'task' | 'service') => {
       if (!date) return; const k = date.slice(0, 10); (map[k] ||= []).push({ label, kind });
     };
     voyages.forEach((v) => { add(v.actualEta || v.eta, `${v.vesselName} arrives`, 'arrival'); add(v.actualEtd || v.etd, `${v.vesselName} departs`, 'departure'); });
     tasks.forEach((t) => add(t.dueDate, t.title, 'task'));
+    services.forEach((s) => add(s.scheduledAt, `${s.serviceType} — ${s.voyageNumber}`, 'service'));
     return map;
-  }, [voyages, tasks]);
+  }, [voyages, tasks, services]);
 
   // Helper calculations
   const upcomingArrivals = voyages.filter(v => new Date(v.eta) >= new Date()).sort((a, b) => new Date(a.eta).getTime() - new Date(b.eta).getTime());
@@ -67,7 +93,7 @@ export default function PlanningCenterView({ vessels, voyages, tasks, users }: P
 
       {/* Tabs */}
       <div className="flex overflow-x-auto hide-scrollbar space-x-2 pb-2">
-        {(['schedule', 'berth', 'services', 'resources', 'calendar'] as const).map((tab) => (
+        {(['schedule', 'berth', 'services', 'calendar'] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -79,8 +105,7 @@ export default function PlanningCenterView({ vessels, voyages, tasks, users }: P
           >
             {tab === 'schedule' && <Clock className="inline-block w-4 h-4 mr-2 -mt-0.5" />}
             {tab === 'berth' && <Anchor className="inline-block w-4 h-4 mr-2 -mt-0.5" />}
-            {tab === 'services' && <Ship className="inline-block w-4 h-4 mr-2 -mt-0.5" />}
-            {tab === 'resources' && <Users className="inline-block w-4 h-4 mr-2 -mt-0.5" />}
+            {tab === 'services' && <Wrench className="inline-block w-4 h-4 mr-2 -mt-0.5" />}
             {tab === 'calendar' && <Calendar className="inline-block w-4 h-4 mr-2 -mt-0.5" />}
             {TAB_LABELS[tab]}
           </button>
@@ -177,76 +202,42 @@ export default function PlanningCenterView({ vessels, voyages, tasks, users }: P
           )}
 
           {activeTab === 'services' && (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-              <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center">
-                <Ship className="w-5 h-5 mr-2 text-[#6C4CE1]" />
-                Service Planner
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {tasks.slice(0, 10).map(task => (
-                  <div key={task.id} className="p-4 border border-slate-200 rounded-xl hover:border-[#6C4CE1] transition-colors">
-                    <div className="flex justify-between items-start mb-2">
-                      <span className="font-bold text-slate-800 text-sm">{task.title}</span>
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                        task.status === 'Completed' ? 'bg-emerald-100 text-emerald-700' :
-                        task.status === 'Delayed' ? 'bg-rose-100 text-rose-700' :
-                        'bg-amber-100 text-amber-700'
-                      }`}>
-                        {task.status}
-                      </span>
-                    </div>
-                    <div className="text-xs text-slate-500 mb-3">{task.description}</div>
-                    <div className="flex justify-between items-center text-xs font-medium">
-                      <span className="text-slate-600">Voyage: {task.voyageNumber}</span>
-                      <span className="text-[#6C4CE1] bg-[#F2EFFF] px-2 py-1 rounded-lg">Due: {new Date(task.dueDate).toLocaleDateString()}</span>
-                    </div>
-                  </div>
-                ))}
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+              <div className="flex items-center justify-between p-5 border-b border-slate-100">
+                <h3 className="text-base font-bold text-slate-800 flex items-center gap-2"><Wrench className="w-4.5 h-4.5 text-[#6C4CE1]" /> Marine Services</h3>
+                <button onClick={() => setSvcModal(true)} className="bg-[#6C4CE1] hover:bg-[#5839C6] text-white text-xs font-semibold px-3 py-2 rounded-lg flex items-center gap-1.5 cursor-pointer"><Plus className="h-3.5 w-3.5" /> Book Service</button>
               </div>
-            </motion.div>
-          )}
-
-          {activeTab === 'resources' && (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-              <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center">
-                <Users className="w-5 h-5 mr-2 text-[#6C4CE1]" />
-                Resource Assignment
-              </h3>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-slate-200">
-                      <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase">Staff Member</th>
-                      <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase">Role</th>
-                      <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase">Status</th>
-                      <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase">Assigned Vessels</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {users.map(user => {
-                      const userVessels = vessels.filter(v => v.assignedPortAgentId === user.id);
-                      return (
-                        <tr key={user.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-                          <td className="py-3 px-4 font-bold text-slate-800 text-sm">{user.name}</td>
-                          <td className="py-3 px-4 text-xs text-slate-600">{user.role.replace('_', ' ')}</td>
+              {services.length === 0 ? (
+                <div className="text-center py-12 text-slate-400 text-sm">No services booked yet. Book pilotage, tugs, bunkering and more against a port call.</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-xs min-w-[720px]">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-200 text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                        <th className="py-3 px-4">Service</th><th className="py-3 px-4">Port Call</th><th className="py-3 px-4">Provider</th><th className="py-3 px-4">Scheduled</th><th className="py-3 px-4">Status</th><th className="py-3 px-4 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {[...services].sort((a, b) => (a.scheduledAt || '').localeCompare(b.scheduledAt || '')).map((s) => (
+                        <tr key={s.id} className="hover:bg-slate-50/60">
+                          <td className="py-3 px-4 font-bold text-slate-800">{s.serviceType}</td>
+                          <td className="py-3 px-4"><span className="px-1.5 py-0.5 rounded text-[10px] bg-[#6C4CE1]/10 text-[#2D1B69] font-semibold">{s.voyageNumber}</span></td>
+                          <td className="py-3 px-4 text-slate-600">{s.providerName || <span className="text-slate-400">—</span>}</td>
+                          <td className="py-3 px-4 tabular-nums text-slate-500">{s.scheduledAt ? s.scheduledAt.replace('T', ' ').slice(0, 16) : '—'}</td>
                           <td className="py-3 px-4">
-                            <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${
-                              user.status === 'Available' ? 'bg-emerald-100 text-emerald-700' :
-                              user.status === 'Busy' ? 'bg-amber-100 text-amber-700' :
-                              'bg-blue-100 text-blue-700'
-                            }`}>
-                              {user.status || 'Available'}
-                            </span>
+                            <select value={s.status} onChange={(e) => onUpdateServiceStatus(s.id, e.target.value as ServiceStatus)} className={`border-0 rounded-full px-2.5 py-0.5 text-[10px] font-bold cursor-pointer focus:outline-none ${SERVICE_STATUS_COLOR[s.status]}`}>
+                              {SERVICE_STATUSES.map((st) => <option key={st} value={st}>{st}</option>)}
+                            </select>
                           </td>
-                          <td className="py-3 px-4 text-xs text-slate-600 font-medium">
-                            {userVessels.length > 0 ? userVessels.map(v => v.vesselName).join(', ') : 'None'}
+                          <td className="py-3 px-4 text-right">
+                            <button onClick={() => onDeleteService(s.id)} className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer" title="Remove service"><Trash2 className="h-3.5 w-3.5" /></button>
                           </td>
                         </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </motion.div>
           )}
 
@@ -259,6 +250,7 @@ export default function PlanningCenterView({ vessels, voyages, tasks, users }: P
               arrival: { icon: ArrowDownToLine, cls: 'bg-amber-50 text-amber-700' },
               departure: { icon: ArrowUpFromLine, cls: 'bg-sky-50 text-sky-700' },
               task: { icon: Clock, cls: 'bg-[#6C4CE1]/10 text-[#6C4CE1]' },
+              service: { icon: Wrench, cls: 'bg-teal-50 text-teal-700' },
             } as const;
             return (
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
@@ -336,6 +328,55 @@ export default function PlanningCenterView({ vessels, voyages, tasks, users }: P
           </div>
         </div>
       </div>
+
+      {/* Book Service modal */}
+      {svcModal && (
+        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden">
+            <div className="p-5 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+              <h4 className="text-sm font-bold text-slate-800 flex items-center gap-2"><Wrench className="h-4.5 w-4.5 text-[#6C4CE1]" /> Book Marine Service</h4>
+              <button onClick={() => setSvcModal(false)} className="text-slate-400 hover:text-slate-600 cursor-pointer"><X className="h-4 w-4" /></button>
+            </div>
+            <div className="p-5 space-y-4 text-xs">
+              <div className="space-y-1">
+                <label className="font-semibold text-slate-600">Port call *</label>
+                <select value={svcForm.voyageId} onChange={(e) => setSvcForm((f) => ({ ...f, voyageId: e.target.value }))} className="w-full border border-slate-200 rounded-lg p-2 bg-white focus:ring-1 focus:ring-[#6C4CE1] focus:outline-none cursor-pointer">
+                  <option value="">— Choose port call —</option>
+                  {voyages.filter((v) => v.status !== 'Completed').map((v) => <option key={v.id} value={v.id}>{v.vesselName} ({v.voyageNumber})</option>)}
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-semibold text-slate-600">Service</label>
+                  <select value={svcForm.serviceType} onChange={(e) => setSvcForm((f) => ({ ...f, serviceType: e.target.value }))} className="w-full border border-slate-200 rounded-lg p-2 bg-white focus:ring-1 focus:ring-[#6C4CE1] focus:outline-none cursor-pointer">
+                    {SERVICE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="font-semibold text-slate-600">Provider</label>
+                  <select value={svcForm.providerId} onChange={(e) => setSvcForm((f) => ({ ...f, providerId: e.target.value }))} className="w-full border border-slate-200 rounded-lg p-2 bg-white focus:ring-1 focus:ring-[#6C4CE1] focus:outline-none cursor-pointer">
+                    <option value="">— Optional —</option>
+                    {providers.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div className="space-y-1">
+                <label className="font-semibold text-slate-600">Scheduled time</label>
+                <input type="datetime-local" value={svcForm.scheduledAt} onChange={(e) => setSvcForm((f) => ({ ...f, scheduledAt: e.target.value }))} className="w-full border border-slate-200 rounded-lg p-2 bg-white focus:ring-1 focus:ring-[#6C4CE1] focus:outline-none" />
+              </div>
+              <div className="space-y-1">
+                <label className="font-semibold text-slate-600">Notes</label>
+                <input value={svcForm.notes} onChange={(e) => setSvcForm((f) => ({ ...f, notes: e.target.value }))} placeholder="Optional" className="w-full border border-slate-200 rounded-lg p-2 bg-white focus:ring-1 focus:ring-[#6C4CE1] focus:outline-none" />
+              </div>
+              {providers.length === 0 && <p className="text-[11px] text-amber-600">Tip: add Vendors/Port Authorities under <strong>Partners</strong> to pick a provider.</p>}
+              <div className="flex items-center justify-end gap-2 pt-1">
+                <button onClick={() => setSvcModal(false)} className="px-4 py-2 border border-slate-200 rounded-lg text-slate-600 font-semibold hover:bg-slate-50 cursor-pointer">Cancel</button>
+                <button onClick={submitService} disabled={!svcForm.voyageId} className="px-4 py-2 bg-[#6C4CE1] hover:bg-[#5839C6] disabled:opacity-50 text-white rounded-lg font-semibold shadow-sm flex items-center gap-1.5 cursor-pointer"><Plus className="h-3.5 w-3.5" /> Book</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
