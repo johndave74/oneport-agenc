@@ -214,6 +214,13 @@ export const Db = {
     return data.signedUrl;
   },
 
+  // Signed URL that forces a download (content-disposition: attachment).
+  async getDocumentDownloadUrl(storagePath: string, fileName: string): Promise<string> {
+    const { data, error } = await supabase.storage.from('documents').createSignedUrl(storagePath, 3600, { download: fileName });
+    if (error) throw new Error(error.message);
+    return data.signedUrl;
+  },
+
   async deleteDocumentFile(storagePath: string): Promise<void> {
     const { error } = await supabase.storage.from('documents').remove([storagePath]);
     if (error) throw new Error(error.message);

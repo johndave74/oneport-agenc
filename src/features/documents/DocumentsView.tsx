@@ -93,9 +93,14 @@ export default function DocumentsView({ documents, voyages, orgId, onUploadDocum
   const handleDownload = async (doc: Document) => {
     if (!doc.storagePath) { setSelectedDoc(doc); return; }
     try {
-      const { data } = await import('@/lib/supabase/client').then((m) => m.supabase.storage.from('documents').createSignedUrl(doc.storagePath!, 3600, { download: doc.fileName }));
-      if (data?.signedUrl) window.open(data.signedUrl, '_blank');
-    } catch { /* ignore */ }
+      const url = await Db.getDocumentDownloadUrl(doc.storagePath, doc.fileName);
+      // Anchor click (not window.open) so pop-up blockers don't kill it.
+      const a = window.document.createElement('a');
+      a.href = url; a.download = doc.fileName; a.rel = 'noopener';
+      window.document.body.appendChild(a); a.click(); a.remove();
+    } catch (err) {
+      alert(`Couldn't download this file: ${err instanceof Error ? err.message : 'unknown error'}. If it just started, the storage bucket/migration may not be applied yet.`);
+    }
   };
 
   const filteredDocs = documents.filter((doc) => {
