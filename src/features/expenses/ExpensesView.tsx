@@ -17,6 +17,8 @@ import {
   FileText
 } from 'lucide-react';
 import { Expense, Voyage, UserRole, Document } from '@/types';
+import { Db } from '@/lib/db/db';
+import Spinner from '@/components/ui/Spinner';
 
 interface ExpensesViewProps {
   expenses: Expense[];
@@ -31,6 +33,7 @@ interface ExpensesViewProps {
   userName: string;
   users?: import('@/types').User[];
   currentUserId?: string;
+  orgId?: string;
 }
 
 export default function ExpensesView({
@@ -45,8 +48,12 @@ export default function ExpensesView({
   userRole,
   userName,
   users = [],
-  currentUserId
+  currentUserId,
+  orgId = ''
 }: ExpensesViewProps) {
+  const [docFile, setDocFile] = useState<File | null>(null);
+  const [docUploading, setDocUploading] = useState(false);
+  const [docError, setDocError] = useState<string | null>(null);
   const approvers = users.filter((u) => !u.platformRole && ['ORG_ADMIN', 'OPERATIONS_MANAGER', 'PROTECTIVE_AGENT', 'FINANCE'].includes(u.role as string) && u.id !== currentUserId);
   const [searchTerm, setSearchTerm] = useState('');
   const [voyageFilter, setVoyageFilter] = useState('All');
@@ -113,47 +120,42 @@ export default function ExpensesView({
     setShowAddModal(false);
   };
 
-  const handleDocUploadSubmit = (e: React.FormEvent) => {
+  const formatBytes = (b: number) => { if (!b) return '—'; const u = ['B', 'KB', 'MB', 'GB']; const i = Math.floor(Math.log(b) / Math.log(1024)); return `${(b / Math.pow(1024, i)).toFixed(i ? 1 : 0)} ${u[i]}`; };
+
+  const handleDocUploadSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!docFileName || !docVoyageId) return;
+    if (!docFile || !docVoyageId) return;
     const v = voyages.find(voy => voy.id === docVoyageId);
     if (!v) return;
-
-    onUploadDocument?.({
-      fileName: docFileName,
-      fileSize: '350 KB',
-      type: 'Invoice',
-      voyageId: docVoyageId,
-      voyageNumber: v.voyageNumber,
-      category: 'Financial Cost Document'
-    });
-
-    setDocFileName('');
-    setDocVoyageId('');
+    setDocUploading(true); setDocError(null);
+    try {
+      const storagePath = await Db.uploadDocumentFile(orgId, docFile);
+      onUploadDocument?.({
+        fileName: docFile.name,
+        fileSize: formatBytes(docFile.size),
+        type: 'Invoice',
+        voyageId: docVoyageId,
+        voyageNumber: v.voyageNumber,
+        category: 'Financial Cost Document',
+        storagePath,
+        mimeType: docFile.type || undefined,
+      });
+      setDocFile(null); setDocFileName(''); setDocVoyageId('');
+    } catch (err) {
+      setDocError(err instanceof Error ? err.message : 'Upload failed. Is the documents bucket created?');
+    } finally {
+      setDocUploading(false);
+    }
   };
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = () => {
-    setIsDragging(false);
-  };
-
+  const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); };
+  const handleDragLeave = () => setIsDragging(false);
   const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      const file = e.dataTransfer.files[0];
-      setDocFileName(file.name);
-    }
+    e.preventDefault(); setIsDragging(false);
+    if (e.dataTransfer.files?.[0]) { setDocFile(e.dataTransfer.files[0]); setDocFileName(e.dataTransfer.files[0].name); setDocError(null); }
   };
-
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      setDocFileName(e.target.files[0].name);
-    }
+    if (e.target.files?.[0]) { setDocFile(e.target.files[0]); setDocFileName(e.target.files[0].name); setDocError(null); }
   };
 
   const triggerMockInvoiceDownload = () => {
@@ -470,20 +472,21 @@ export default function ExpensesView({
                     <span className="font-semibold text-[#6C4CE1]">Click to upload</span> or drag & drop files
                   </div>
                 )}
-                <span className="text-[9px] text-slate-400">PDF, PNG, JPG, or Excel up to 10MB</span>
+                <span className="text-[9px] text-slate-400">PDF, DOCX, XLSX, CSV or images{docFile ? ` · ${formatBytes(docFile.size)}` : ''}</span>
               </div>
+
+              {docError && <div className="flex items-start gap-1.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-lg px-2.5 py-1.5 text-[11px]"><AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" /><span>{docError}</span></div>}
 
               <button
                 type="submit"
-                disabled={!docFileName || !docVoyageId}
-                className={`w-full py-2 text-xs font-bold text-white rounded-lg flex items-center justify-center space-x-1.5 shadow-md shadow-slate-900/10 cursor-pointer transition-all ${
-                  (!docFileName || !docVoyageId) 
-                    ? 'bg-slate-300 cursor-not-allowed shadow-none' 
+                disabled={!docFile || !docVoyageId || docUploading}
+                className={`w-full py-2 text-xs font-bold text-white rounded-lg flex items-center justify-center gap-1.5 shadow-md shadow-slate-900/10 cursor-pointer transition-all ${
+                  (!docFile || !docVoyageId || docUploading)
+                    ? 'bg-slate-300 cursor-not-allowed shadow-none'
                     : 'bg-[#6C4CE1] hover:bg-[#6C4CE1]/90'
                 }`}
               >
-                <Plus className="h-3.5 w-3.5" />
-                <span>Add to Financial Files</span>
+                {docUploading ? <><Spinner className="h-3.5 w-3.5" /> Uploading…</> : <><Plus className="h-3.5 w-3.5" /> Add to Financial Files</>}
               </button>
             </form>
           </div>

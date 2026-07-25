@@ -15,6 +15,8 @@ import {
 } from 'lucide-react';
 import { Voyage, UserRole, Vessel, User, Task, Document, Expense, LaytimeCalculation, SOFEvent } from '@/types';
 import StatementOfFacts from './StatementOfFacts';
+import { printDocument, norHtml } from '@/lib/documents/generate';
+import { FileCheck2 } from 'lucide-react';
 
 interface VoyagesViewProps {
   voyages: Voyage[];
@@ -30,6 +32,7 @@ interface VoyagesViewProps {
   onDeleteVoyage?: (id: string) => void;
   onToggleTimelineEvent: (voyageId: string, eventIndex: number) => void;
   setView?: (view: string) => void;
+  orgName?: string;
   userRole: UserRole;
 }
 
@@ -52,6 +55,7 @@ export default function VoyagesView({
   onDeleteVoyage,
   onToggleTimelineEvent,
   setView,
+  orgName = 'OnePort',
   userRole
 }: VoyagesViewProps) {
   const orgUsers = users.filter((u) => !u.platformRole);
@@ -67,6 +71,8 @@ export default function VoyagesView({
   const [editCargoMode, setEditCargoMode] = useState(false);
   const [editDetailsMode, setEditDetailsMode] = useState(false);
   const [voyageToDelete, setVoyageToDelete] = useState<{ id: string; label: string } | null>(null);
+  const [norModal, setNorModal] = useState(false);
+  const [norForm, setNorForm] = useState({ tenderedAt: '', place: '', operation: 'discharging' as 'loading' | 'discharging', addressedTo: '' });
 
   // Core voyage detail edit states (voyage number, ports, ETA/ETD)
   const [updVoyageNumber, setUpdVoyageNumber] = useState('');
@@ -102,6 +108,41 @@ export default function VoyagesView({
   const [updActualEtd, setUpdActualEtd] = useState('');
 
   const selectedVoyage = voyages.find(v => v.id === selectedVoyageId);
+
+  const openNor = () => {
+    if (!selectedVoyage) return;
+    setNorForm({
+      tenderedAt: (selectedVoyage.actualEta || selectedVoyage.eta || new Date().toISOString()).slice(0, 16),
+      place: '',
+      operation: (selectedVoyage.cargoStatus || '').toLowerCase().includes('load') ? 'loading' : 'discharging',
+      addressedTo: 'The Master / Charterers',
+    });
+    setNorModal(true);
+  };
+
+  const submitNor = (alsoLog: boolean) => {
+    if (!selectedVoyage) return;
+    const vessel = vessels.find(v => v.id === selectedVoyage.vesselId);
+    const tenderedAt = norForm.tenderedAt || new Date().toISOString();
+    printDocument(`NOR ${selectedVoyage.voyageNumber}`, norHtml({
+      orgName,
+      vesselName: selectedVoyage.vesselName,
+      imoNumber: vessel?.imoNumber,
+      voyageNumber: selectedVoyage.voyageNumber,
+      port: selectedVoyage.destinationPort || selectedVoyage.originPort || '',
+      place: norForm.place,
+      cargo: selectedVoyage.cargoType,
+      quantity: selectedVoyage.cargoQuantity,
+      operation: norForm.operation,
+      tenderedAt,
+      addressedTo: norForm.addressedTo,
+    }));
+    if (alsoLog) {
+      const events: SOFEvent[] = [...(selectedVoyage.sofEvents || []), { id: `sof-${Date.now()}`, timestamp: tenderedAt, eventDescription: 'NOR tendered', isCountable: 100 }];
+      onUpdateCargoDetails(selectedVoyage.id, { sofEvents: events });
+    }
+    setNorModal(false);
+  };
 
   React.useEffect(() => {
     const voy = voyages.find(v => v.id === selectedVoyageId);
@@ -326,7 +367,13 @@ export default function VoyagesView({
                   <p className="text-xs text-slate-500">{selectedVoyage.voyageNumber} · Port Agent: {agentName(selectedVoyage.portAgentId)} · Ship Agent: {agentName(selectedVoyage.shipAgentId)}</p>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <span className="text-xs tabular-nums text-slate-400">Status:</span>
+                  <button
+                    onClick={openNor}
+                    className="bg-[#6C4CE1] hover:bg-[#5839C6] text-white text-[11px] font-semibold px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer"
+                    title="Generate Notice of Readiness"
+                  >
+                    <FileCheck2 className="h-3.5 w-3.5" /> Generate NOR
+                  </button>
                   <span className="bg-[#6C4CE1]/10 text-[#2D1B69] font-bold px-2.5 py-1 rounded-lg text-xs tabular-nums border border-[#6C4CE1]/20">
                     {selectedVoyage.status}
                   </span>
@@ -965,6 +1012,47 @@ export default function VoyagesView({
               >
                 Delete Record
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Generate NOR modal */}
+      {norModal && selectedVoyage && (
+        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden">
+            <div className="p-5 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+              <h4 className="text-sm font-bold text-slate-800 flex items-center gap-2"><FileCheck2 className="h-4.5 w-4.5 text-[#6C4CE1]" /> Notice of Readiness — {selectedVoyage.vesselName}</h4>
+              <button onClick={() => setNorModal(false)} className="text-slate-400 hover:text-slate-600 text-lg cursor-pointer">&times;</button>
+            </div>
+            <div className="p-5 space-y-4 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-slate-500 font-semibold">Tendered at</label>
+                  <input type="datetime-local" value={norForm.tenderedAt} onChange={(e) => setNorForm(f => ({ ...f, tenderedAt: e.target.value }))} className="w-full border border-slate-200 rounded-lg p-2 bg-white focus:ring-1 focus:ring-[#6C4CE1] focus:outline-none" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-slate-500 font-semibold">Operation</label>
+                  <select value={norForm.operation} onChange={(e) => setNorForm(f => ({ ...f, operation: e.target.value as 'loading' | 'discharging' }))} className="w-full border border-slate-200 rounded-lg p-2 bg-white focus:ring-1 focus:ring-[#6C4CE1] focus:outline-none cursor-pointer">
+                    <option value="discharging">Discharging</option>
+                    <option value="loading">Loading</option>
+                  </select>
+                </div>
+              </div>
+              <div className="space-y-1">
+                <label className="text-slate-500 font-semibold">Berth / Place (optional)</label>
+                <input value={norForm.place} onChange={(e) => setNorForm(f => ({ ...f, place: e.target.value }))} placeholder="e.g. Berth 4, Anchorage" className="w-full border border-slate-200 rounded-lg p-2 bg-white focus:ring-1 focus:ring-[#6C4CE1] focus:outline-none" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-slate-500 font-semibold">Addressed to</label>
+                <input value={norForm.addressedTo} onChange={(e) => setNorForm(f => ({ ...f, addressedTo: e.target.value }))} className="w-full border border-slate-200 rounded-lg p-2 bg-white focus:ring-1 focus:ring-[#6C4CE1] focus:outline-none" />
+              </div>
+              <p className="text-[11px] text-slate-400 leading-relaxed bg-slate-50 border border-slate-100 rounded-lg p-2.5">Generates a printable NOR (Save as PDF from the print dialog). Logging it also records a <strong>"NOR tendered"</strong> event in the SOF, which feeds laytime.</p>
+              <div className="flex items-center justify-end gap-2 pt-1">
+                <button onClick={() => setNorModal(false)} className="px-4 py-2 border border-slate-200 rounded-lg text-slate-600 font-semibold hover:bg-slate-50 cursor-pointer">Cancel</button>
+                <button onClick={() => submitNor(false)} className="px-4 py-2 border border-[#6C4CE1]/30 text-[#6C4CE1] rounded-lg font-semibold hover:bg-[#6C4CE1]/5 cursor-pointer">Generate only</button>
+                <button onClick={() => submitNor(true)} className="px-4 py-2 bg-[#6C4CE1] hover:bg-[#5839C6] text-white rounded-lg font-semibold shadow-sm flex items-center gap-1.5 cursor-pointer"><FileCheck2 className="h-3.5 w-3.5" /> Generate &amp; log SOF</button>
+              </div>
             </div>
           </div>
         </div>

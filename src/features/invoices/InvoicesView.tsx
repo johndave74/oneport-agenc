@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { FileStack, Plus, Trash2, Search } from 'lucide-react';
+import { FileStack, Plus, Trash2, Search, Printer, ReceiptText } from 'lucide-react';
 import { Invoice, InvoiceStatus, Voyage, Partner } from '@/types';
 import EmptyState from '@/components/ui/EmptyState';
+import { printDocument, invoiceHtml } from '@/lib/documents/generate';
 
 interface InvoicesViewProps {
   invoices: Invoice[];
   voyages: Voyage[];
   partners: Partner[];
+  orgName?: string;
   onAddInvoice: (invoice: Omit<Invoice, 'id' | 'createdAt'>) => void;
   onUpdateInvoiceStatus: (id: string, status: InvoiceStatus) => void;
   onDeleteInvoice: (id: string) => void;
@@ -33,7 +35,16 @@ const STATUS_COLORS: Record<InvoiceStatus, string> = {
   Cancelled: 'bg-slate-100 text-slate-400'
 };
 
-export default function InvoicesView({ invoices, voyages, partners, onAddInvoice, onUpdateInvoiceStatus, onDeleteInvoice, userName }: InvoicesViewProps) {
+export default function InvoicesView({ invoices, voyages, partners, orgName = 'OnePort', onAddInvoice, onUpdateInvoiceStatus, onDeleteInvoice, userName }: InvoicesViewProps) {
+  const generate = (i: Invoice, kind: 'invoice' | 'receipt') => printDocument(
+    `${kind === 'receipt' ? 'Receipt' : 'Invoice'} ${i.invoiceNumber}`,
+    invoiceHtml({
+      orgName, kind, number: i.invoiceNumber, billTo: i.partnerName || '',
+      issueDate: i.issueDate, dueDate: i.dueDate, currency: i.currency,
+      lineItems: [{ description: i.notes || `Agency disbursements & charges — ${i.voyageNumber}`, amount: i.amount }],
+      notes: kind === 'receipt' ? 'Payment received with thanks.' : i.notes,
+    })
+  );
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState<InvoiceFormState>(emptyForm);
@@ -123,9 +134,19 @@ export default function InvoicesView({ invoices, voyages, partners, onAddInvoice
                       </select>
                     </td>
                     <td className="py-4 px-5 text-right">
-                      <button onClick={() => setInvoiceToDelete({ id: i.id, name: i.invoiceNumber })} className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer" title="Delete Invoice">
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
+                      <div className="flex items-center justify-end gap-1">
+                        <button onClick={() => generate(i, 'invoice')} className="p-1.5 text-slate-400 hover:text-[#6C4CE1] hover:bg-[#6C4CE1]/10 rounded-lg transition-colors cursor-pointer" title="Generate invoice PDF">
+                          <Printer className="h-3.5 w-3.5" />
+                        </button>
+                        {i.status === 'Paid' && (
+                          <button onClick={() => generate(i, 'receipt')} className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer" title="Generate receipt PDF">
+                            <ReceiptText className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                        <button onClick={() => setInvoiceToDelete({ id: i.id, name: i.invoiceNumber })} className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer" title="Delete Invoice">
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
