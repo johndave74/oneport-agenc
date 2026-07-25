@@ -282,6 +282,16 @@ export default function App() {
     if (!currentUser) return;
     const updated = await Db.updateVesselStatus(id, status);
     setVessels(prev => prev.map(v => v.id === id ? updated : v));
+    // A manual vessel status change flows through to the vessel's open port
+    // call(s) so the dashboard and Port Calls view stay in step. Completed
+    // calls are history — never reopened by a registry edit.
+    const openCalls = voyages.filter(v => v.vesselId === id && v.status !== 'Completed' && v.status !== status);
+    for (const voy of openCalls) {
+      try {
+        const uvoy = await Db.updateVoyage(voy.id, { status });
+        setVoyages(prev => prev.map(v => v.id === voy.id ? uvoy : v));
+      } catch (e) { console.error('port call status sync failed', e); }
+    }
   };
 
   const handleAddVoyage = async (newVoyage: Omit<Voyage, 'id'>) => {
@@ -757,7 +767,7 @@ export default function App() {
         <PlatformSidebar currentView={currentView} setView={setView} userName={currentUser.name} onLogout={handleLogout} isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
         <div className="flex-1 flex flex-col min-w-0">
           <Header currentView={currentView} userRole={currentUser.role} userName={currentUser.name} notifications={notifications} onMarkAllRead={handleMarkAllNotificationsRead} orgName="Platform Console" onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} onLogout={handleLogout} setView={setView} platformMode />
-          <main className="flex-1 overflow-y-auto p-4 md:p-8">{renderPlatformView()}</main>
+          <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-8">{renderPlatformView()}</main>
         </div>
       </div>
     );
@@ -774,7 +784,7 @@ export default function App() {
       <Sidebar currentView={currentView} setView={setView} userRole={currentUser.role} userName={currentUser.name} permissions={effectivePermissions} isPlatformAdmin={!!currentUser.isPlatformAdmin} enabledModules={org.enabledModules} onLogout={handleLogout} isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
       <div className="flex-1 flex flex-col min-w-0">
         <Header currentView={currentView} userRole={currentUser.role} userName={currentUser.name} notifications={notifications} onMarkAllRead={handleMarkAllNotificationsRead} orgName={org.companyName} onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} onLogout={handleLogout} setView={setView} onOpenCommandPalette={() => setIsCommandPaletteOpen(true)} opsSummary={opsSummary} />
-        <main className="flex-1 overflow-y-auto p-4 md:p-8">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-8">
           {renderMainView()}
         </main>
       </div>

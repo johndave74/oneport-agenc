@@ -106,7 +106,7 @@ export default function Header({
     approvals: ['Commercial', 'Approvals'],
     laytime: ['Maritime Operations', 'Laytime & Demurrage'],
     messages: ['Documents & Partners', 'Communications'],
-    reports: ['Reports & Analytics', 'Reports & Analytics'],
+    reports: ['Reports & Analytics', 'Reports'],
     notifications: ['Account', 'Notifications'],
     settings: ['Account', 'Settings'],
     company: ['Account', 'Company'],
@@ -138,7 +138,7 @@ export default function Header({
   return (
     <header className="h-16 bg-[#F4F7F9] border-b border-slate-200 px-4 md:px-6 flex items-center justify-between sticky top-0 z-40 shadow-[0_2px_8px_rgba(0,0,0,0.01)] select-none gap-4">
       {/* Vantus Breadcrumb Style with Mobile Menu Toggle */}
-      <div className="flex items-center space-x-3.5 min-w-0 shrink-0">
+      <div className="flex items-center space-x-3.5 min-w-0">
         {onToggleSidebar && (
           <button
             onClick={onToggleSidebar}
@@ -155,7 +155,9 @@ export default function Header({
           </h2>
           <div className="flex items-center space-x-1 text-[9px] md:text-[10px] text-slate-400 font-semibold font-sans tracking-tight uppercase mt-1 truncate">
             {currentPath.map((node, index) => (
-              <React.Fragment key={node}>
+              // Key must include the index: two crumbs can share the same label,
+              // and duplicate keys make React leave stale crumbs behind on nav.
+              <React.Fragment key={`${index}-${node}`}>
                 {index > 0 && <span className="text-slate-300 font-normal">/</span>}
                 <span className={index === currentPath.length - 1 ? 'text-[#6C4CE1]' : 'text-slate-400'}>
                   {node}
