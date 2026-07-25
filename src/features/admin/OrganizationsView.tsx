@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Building2, Plus, Mail, AlertTriangle, CheckCircle2, Users, X, Pencil, Trash2, Power, PauseCircle, RotateCcw, ArrowLeft } from 'lucide-react';
 import EmptyState from '@/components/ui/EmptyState';
+import Spinner from '@/components/ui/Spinner';
 import { Organization, User } from '@/types';
 import { AdminApi } from '@/lib/supabase/adminApi';
 import { PLAN_LIST, PLANS, PlanId, resolvePlan, modulesForPlan, money, trialEndFromNow, daysLeft } from '@/lib/billing/plans';
@@ -284,7 +285,7 @@ export default function OrganizationsView({ organizations, users, currentOrgId, 
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
                 <button type="button" onClick={() => { setShowForm(false); setEditing(null); }} className="px-4 py-2 border border-slate-200 rounded-lg text-slate-600 font-semibold hover:bg-slate-50 cursor-pointer">Cancel</button>
                 <button type="submit" disabled={busy} className={`px-4 py-2 bg-[#6C4CE1] hover:bg-[#5839C6] text-white rounded-lg font-semibold shadow-sm flex items-center gap-1.5 ${busy ? 'opacity-70' : ''}`}>
-                  {editing ? <Pencil className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />} {busy ? 'Saving…' : editing ? 'Save changes' : 'Create'}
+                  {busy ? <Spinner className="h-3.5 w-3.5" /> : editing ? <Pencil className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />} {busy ? 'Saving…' : editing ? 'Save changes' : 'Create'}
                 </button>
               </div>
             </form>
@@ -320,7 +321,7 @@ export default function OrganizationsView({ organizations, users, currentOrgId, 
                     disabled={confirmText !== CONFIRM_PHRASE || actionBusy}
                     className="px-4 py-2 bg-rose-600 hover:bg-rose-500 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-lg font-semibold shadow-sm flex items-center gap-1.5 cursor-pointer"
                   >
-                    <Trash2 className="h-3.5 w-3.5" /> {actionBusy ? 'Working…' : permanent ? 'Delete forever' : 'Move to trash'}
+                    {actionBusy ? <Spinner className="h-3.5 w-3.5" /> : <Trash2 className="h-3.5 w-3.5" />} {actionBusy ? 'Working…' : permanent ? 'Delete forever' : 'Move to trash'}
                   </button>
                 </div>
               </div>

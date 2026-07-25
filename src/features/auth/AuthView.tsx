@@ -4,6 +4,7 @@ import Logo from '@/components/ui/Logo';
 import { Auth } from '@/lib/supabase/auth';
 import { isSupabaseConfigured } from '@/lib/supabase/client';
 import { Mail, Lock, ChevronRight, Eye, EyeOff, ArrowLeft, AlertTriangle, ShieldCheck } from 'lucide-react';
+import Spinner from '@/components/ui/Spinner';
 
 interface AuthViewProps {
   initialRole?: string;
@@ -140,7 +141,7 @@ export default function AuthView({ onLoginSuccess, onBack }: AuthViewProps) {
                 disabled={isLoading}
                 className={`w-full bg-[#6C4CE1] hover:bg-[#5839C6] text-white font-bold py-3.5 rounded-xl transition-colors text-sm flex items-center justify-center mt-6 shadow-[0_4px_14px_rgba(108,76,225,0.39)] ${isLoading ? 'opacity-70' : ''}`}
               >
-                {isLoading ? 'Signing in...' : 'Sign in'} <ChevronRight className="ml-1.5 h-4 w-4" />
+                {isLoading ? <><Spinner className="h-4 w-4 mr-2" /> Signing in…</> : <>Sign in <ChevronRight className="ml-1.5 h-4 w-4" /></>}
               </button>
             </form>
 

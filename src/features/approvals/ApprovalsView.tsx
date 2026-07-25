@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { CheckSquare, Check, X, AlertTriangle, UserCheck } from 'lucide-react';
 import { Expense, Incident, UserRole } from '@/types';
 import EmptyState from '@/components/ui/EmptyState';
+import Spinner from '@/components/ui/Spinner';
 
 interface ApprovalsViewProps {
   expenses: Expense[];
@@ -13,6 +14,11 @@ interface ApprovalsViewProps {
 }
 
 export default function ApprovalsView({ expenses, incidents, onApproveExpense, onRejectExpense, userRole, currentUserId }: ApprovalsViewProps) {
+  const [pending, setPending] = useState<string | null>(null);
+  const act = async (id: string, fn: (id: string) => void | Promise<void>) => {
+    setPending(id);
+    try { await fn(id); } finally { setPending(null); }
+  };
   const isApprover = userRole === 'PROTECTIVE_AGENT' || userRole === 'ADMIN';
   // Assigned-to-me items first, then the rest.
   const pendingExpenses = expenses
@@ -47,11 +53,11 @@ export default function ApprovalsView({ expenses, incidents, onApproveExpense, o
                 <p className="text-[11px] text-slate-500 mb-2">{e.description}</p>
                 {canActOn(e) ? (
                   <div className="flex items-center justify-end space-x-2">
-                    <button onClick={() => onRejectExpense(e.id)} className="bg-slate-50 hover:bg-rose-100 hover:text-rose-700 text-slate-500 border border-slate-200 px-2.5 py-1 rounded flex items-center gap-1 transition-colors cursor-pointer font-semibold">
-                      <X className="h-3 w-3" /> Reject
+                    <button disabled={pending === e.id} onClick={() => act(e.id, onRejectExpense)} className="bg-slate-50 hover:bg-rose-100 hover:text-rose-700 text-slate-500 border border-slate-200 disabled:opacity-50 px-2.5 py-1 rounded flex items-center gap-1 transition-colors cursor-pointer font-semibold">
+                      {pending === e.id ? <Spinner className="h-3 w-3" /> : <X className="h-3 w-3" />} Reject
                     </button>
-                    <button onClick={() => onApproveExpense(e.id)} className="bg-[#6C4CE1] hover:bg-[#6C4CE1]/90 text-white px-2.5 py-1 rounded flex items-center gap-1 shadow-sm transition-colors cursor-pointer font-semibold">
-                      <Check className="h-3 w-3" /> Approve
+                    <button disabled={pending === e.id} onClick={() => act(e.id, onApproveExpense)} className="bg-[#6C4CE1] hover:bg-[#6C4CE1]/90 text-white disabled:opacity-60 px-2.5 py-1 rounded flex items-center gap-1 shadow-sm transition-colors cursor-pointer font-semibold">
+                      {pending === e.id ? <Spinner className="h-3 w-3" /> : <Check className="h-3 w-3" />} Approve
                     </button>
                   </div>
                 ) : (

@@ -15,6 +15,7 @@ import {
   Edit2
 } from 'lucide-react';
 import { Vessel, VesselStatus, UserRole, User as AppUser } from '@/types';
+import Spinner from '@/components/ui/Spinner';
 
 interface VesselsViewProps {
   vessels: Vessel[];
@@ -598,9 +599,9 @@ export default function VesselsView({
                 <button
                   type="submit"
                   disabled={addBusy}
-                  className="px-5 py-2.5 bg-[#6C4CE1] hover:bg-[#6C4CE1]/90 disabled:opacity-60 text-white rounded-lg font-semibold shadow-md shadow-slate-900/10 cursor-pointer"
+                  className="px-5 py-2.5 bg-[#6C4CE1] hover:bg-[#6C4CE1]/90 disabled:opacity-60 text-white rounded-lg font-semibold shadow-md shadow-slate-900/10 cursor-pointer flex items-center gap-2"
                 >
-                  {addBusy ? 'Saving…' : 'Register Vessel log'}
+                  {addBusy && <Spinner className="h-4 w-4" />}{addBusy ? 'Saving…' : 'Register Vessel log'}
                 </button>
               </div>
             </form>

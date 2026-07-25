@@ -62,6 +62,7 @@ import AuthView from '@/features/auth/AuthView';
 import AcceptInviteView from '@/features/auth/AcceptInviteView';
 import WorkspaceLockedView from '@/features/auth/WorkspaceLockedView';
 import LandingView from '@/features/auth/LandingView';
+import LoadingScreen from '@/components/ui/LoadingScreen';
 import { workspaceAccess } from '@/lib/billing/plans';
 import { AdminApi } from '@/lib/supabase/adminApi';
 import LaytimeCalculatorView from '@/features/laytime/LaytimeCalculatorView';
@@ -693,11 +694,7 @@ export default function App() {
   }
 
   if (!authChecked) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-[#F4F7F9] text-slate-400 text-xs font-sans">
-        Loading workspace...
-      </div>
-    );
+    return <LoadingScreen message="Starting OnePort…" />;
   }
 
   if (!currentUser) {
