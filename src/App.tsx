@@ -65,6 +65,7 @@ import LandingView from '@/features/auth/LandingView';
 import LoadingScreen from '@/components/ui/LoadingScreen';
 import { workspaceAccess } from '@/lib/billing/plans';
 import { AdminApi } from '@/lib/supabase/adminApi';
+import { deriveVoyageStatus } from '@/lib/voyageStatus';
 import LaytimeCalculatorView from '@/features/laytime/LaytimeCalculatorView';
 import CrmView from '@/features/crm/CrmView';
 import CrewView from '@/features/crew/CrewView';
@@ -312,8 +313,16 @@ export default function App() {
     if (!voyage) return;
     const timeline = [...voyage.timeline];
     timeline[eventIndex] = { ...timeline[eventIndex], completed: !timeline[eventIndex].completed, timestamp: new Date().toISOString() };
-    const updated = await Db.updateVoyage(voyageId, { timeline });
+    // Auto-advance the port call status from the milestones, and keep the vessel in sync.
+    const status = deriveVoyageStatus(timeline);
+    const updated = await Db.updateVoyage(voyageId, { timeline, status });
     setVoyages(prev => prev.map(v => v.id === voyageId ? updated : v));
+    if (voyage.vesselId) {
+      try {
+        const uv = await Db.updateVesselStatus(voyage.vesselId, status as VesselStatus);
+        setVessels(prev => prev.map(v => v.id === voyage.vesselId ? uv : v));
+      } catch (e) { console.error('vessel status sync failed', e); }
+    }
   };
 
   const handleAddTask = async (newTask: Omit<Task, 'id'>) => {

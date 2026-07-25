@@ -51,10 +51,11 @@ export default function PlanningTimelineHero({ voyages, vessels, setView }: Plan
         const etaD = (eta || '').slice(0, 10);
         const etbD = (etb || '').slice(0, 10);
         const etdD = (etd || '').slice(0, 10);
+        // Movements only — no "in port" filler on the in-between days (keeps the
+        // board showing discrete events, not the same vessel repeated all week).
         if (etaD === key) entries.push({ voyage: v, kind: 'arrival', label: `Arriving ${timeOf(eta)}`.trim() });
         else if (etdD === key) entries.push({ voyage: v, kind: 'departure', label: `Departing ${timeOf(etd)}`.trim() });
         else if (etbD === key) entries.push({ voyage: v, kind: 'berth', label: `Berthing ${timeOf(etb)}`.trim() });
-        else if (etaD && etdD && etaD < key && key < etdD) entries.push({ voyage: v, kind: 'inport', label: 'In port' });
       }
       out.push({ key, label, entries });
     }
