@@ -19,6 +19,7 @@ import {
 import { Expense, Voyage, UserRole, Document } from '@/types';
 import { Db } from '@/lib/db/db';
 import Spinner from '@/components/ui/Spinner';
+import { printDocument, disbursementHtml } from '@/lib/documents/generate';
 
 interface ExpensesViewProps {
   expenses: Expense[];
@@ -34,6 +35,7 @@ interface ExpensesViewProps {
   users?: import('@/types').User[];
   currentUserId?: string;
   orgId?: string;
+  orgName?: string;
 }
 
 export default function ExpensesView({
@@ -49,11 +51,27 @@ export default function ExpensesView({
   userName,
   users = [],
   currentUserId,
-  orgId = ''
+  orgId = '',
+  orgName = 'OnePort'
 }: ExpensesViewProps) {
   const [docFile, setDocFile] = useState<File | null>(null);
   const [docUploading, setDocUploading] = useState(false);
   const [docError, setDocError] = useState<string | null>(null);
+  const [stmtModal, setStmtModal] = useState(false);
+  const [stmtVoyageId, setStmtVoyageId] = useState('');
+  const [stmtKind, setStmtKind] = useState<'PDA' | 'FDA'>('PDA');
+
+  const genStatement = () => {
+    const voy = voyages.find((v) => v.id === stmtVoyageId);
+    if (!voy) return;
+    const items = expenses.filter((e) => e.voyageId === stmtVoyageId).map((e) => ({
+      category: e.category, description: e.description, estimated: e.estimatedAmount, actual: e.amount, status: e.status,
+    }));
+    printDocument(`${stmtKind} ${voy.voyageNumber}`, disbursementHtml({
+      orgName, kind: stmtKind, voyageNumber: voy.voyageNumber, vesselName: voy.vesselName, currency: 'USD', items,
+    }));
+    setStmtModal(false);
+  };
   const approvers = users.filter((u) => !u.platformRole && ['ORG_ADMIN', 'OPERATIONS_MANAGER', 'PROTECTIVE_AGENT', 'FINANCE'].includes(u.role as string) && u.id !== currentUserId);
   const [searchTerm, setSearchTerm] = useState('');
   const [voyageFilter, setVoyageFilter] = useState('All');
@@ -273,6 +291,13 @@ export default function ExpensesView({
             <span>Generate PDF Invoice</span>
           </button>
 
+          <button
+            onClick={() => { setStmtKind(accountTypeTab); setStmtVoyageId(voyageFilter !== 'All' ? voyageFilter : ''); setStmtModal(true); }}
+            className="w-full sm:w-auto bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 font-semibold text-xs py-2 px-4 rounded-lg flex items-center justify-center gap-1.5 cursor-pointer"
+          >
+            <FileText className="h-4 w-4 text-[#6C4CE1]" />
+            <span>Generate PDA/FDA</span>
+          </button>
           {/* Port Agents and Ship Agents can book costs */}
           {(userRole === 'PORT_AGENT' || userRole === 'SHIP_AGENT' || userRole === 'ADMIN') && (
             <button
@@ -285,6 +310,39 @@ export default function ExpensesView({
           )}
         </div>
       </div>
+
+      {/* Generate PDA/FDA statement modal */}
+      {stmtModal && (
+        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden">
+            <div className="p-5 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+              <h4 className="text-sm font-bold text-slate-800 flex items-center gap-2"><FileText className="h-4.5 w-4.5 text-[#6C4CE1]" /> Generate Disbursement Statement</h4>
+              <button onClick={() => setStmtModal(false)} className="text-slate-400 hover:text-slate-600 text-lg cursor-pointer">&times;</button>
+            </div>
+            <div className="p-5 space-y-4 text-xs">
+              <div className="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                {(['PDA', 'FDA'] as const).map((k) => (
+                  <button key={k} onClick={() => setStmtKind(k)} className={`flex-1 px-2.5 py-1.5 text-[11px] font-bold rounded-md transition-all cursor-pointer ${stmtKind === k ? 'bg-white text-[#6C4CE1] shadow-xs' : 'text-slate-500 hover:text-slate-800'}`}>
+                    {k === 'PDA' ? 'PDA (Proforma)' : 'FDA (Final)'}
+                  </button>
+                ))}
+              </div>
+              <div className="space-y-1">
+                <label className="text-slate-500 font-semibold">Port call *</label>
+                <select value={stmtVoyageId} onChange={(e) => setStmtVoyageId(e.target.value)} className="w-full border border-slate-200 rounded-lg p-2 bg-white focus:ring-1 focus:ring-[#6C4CE1] focus:outline-none cursor-pointer">
+                  <option value="">— Choose port call —</option>
+                  {voyages.map((v) => <option key={v.id} value={v.id}>{v.vesselName} ({v.voyageNumber})</option>)}
+                </select>
+              </div>
+              <p className="text-[11px] text-slate-400 leading-relaxed bg-slate-50 border border-slate-100 rounded-lg p-2.5">{stmtKind === 'PDA' ? 'Proforma estimate of port costs for this call.' : 'Final account — actual costs against the estimate, with variance.'} Save as PDF from the print dialog.</p>
+              <div className="flex items-center justify-end gap-2 pt-1">
+                <button onClick={() => setStmtModal(false)} className="px-4 py-2 border border-slate-200 rounded-lg text-slate-600 font-semibold hover:bg-slate-50 cursor-pointer">Cancel</button>
+                <button onClick={genStatement} disabled={!stmtVoyageId} className="px-4 py-2 bg-[#6C4CE1] hover:bg-[#5839C6] disabled:opacity-50 text-white rounded-lg font-semibold shadow-sm flex items-center gap-1.5 cursor-pointer"><FileText className="h-3.5 w-3.5" /> Generate {stmtKind}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* cost statement Table */}
       <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
