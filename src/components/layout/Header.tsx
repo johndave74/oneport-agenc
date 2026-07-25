@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Bell, MessageSquare, Clock, Menu, Settings, LogOut, ChevronDown } from 'lucide-react';
+import { Bell, MessageSquare, Clock, Menu, Settings, LogOut } from 'lucide-react';
 import { UserRole, Notification } from '@/types';
 
 interface OpsSummary {
@@ -299,33 +299,28 @@ export default function Header({
           )}
         </div>
 
-        {/* Organization display */}
-        <div className="hidden xl:flex flex-col items-end pl-1 pr-2 border-l border-slate-200 leading-tight">
-          <span className="text-xs font-bold text-slate-700 truncate max-w-[140px]">{orgName || 'Organization'}</span>
-          <span className="text-[9px] text-slate-400 uppercase tracking-wider">Organization</span>
-        </div>
-
-        {/* User Profile */}
+        {/* User Profile — name + role · org, avatar on the right */}
         <div className="relative">
           <button
             onClick={() => setShowProfileMenu(!showProfileMenu)}
-            className="flex items-center space-x-2 pl-1 pr-2 py-1 rounded-lg hover:bg-slate-200/50 transition-colors cursor-pointer"
+            className="flex items-center space-x-2.5 pl-2 pr-1 py-1 rounded-lg hover:bg-slate-200/50 transition-colors cursor-pointer"
           >
+            <div className="hidden sm:flex flex-col items-end leading-tight">
+              <span className="text-xs font-bold text-slate-800 truncate max-w-[180px]">{userName}</span>
+              <span className="text-[9px] text-slate-400 uppercase tracking-wider truncate max-w-[180px]">
+                {ROLE_LABELS[userRole]}{orgName ? ` · ${orgName}` : ''}
+              </span>
+            </div>
             <div className="h-8 w-8 rounded-full bg-[#6C4CE1]/10 border border-[#6C4CE1]/20 flex items-center justify-center text-[#6C4CE1] font-black text-xs shrink-0">
               {initials}
             </div>
-            <div className="hidden sm:flex flex-col items-start leading-tight">
-              <span className="text-xs font-bold text-slate-800 truncate max-w-[110px]">{userName}</span>
-              <span className="text-[9px] text-slate-400 uppercase tracking-wider">{ROLE_LABELS[userRole]}</span>
-            </div>
-            <ChevronDown className="h-3.5 w-3.5 text-slate-400 hidden sm:block" />
           </button>
 
           {showProfileMenu && (
             <div className="absolute right-0 mt-2.5 w-52 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden">
               <div className="p-3 border-b border-slate-100">
                 <span className="text-xs font-bold text-slate-800 block truncate">{userName}</span>
-                <span className="text-[10px] text-slate-400">{ROLE_LABELS[userRole]}</span>
+                <span className="text-[10px] text-slate-400 block truncate">{ROLE_LABELS[userRole]}{orgName ? ` · ${orgName}` : ''}</span>
               </div>
               <button
                 onClick={() => { setView?.('settings'); setShowProfileMenu(false); }}
