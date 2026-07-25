@@ -662,7 +662,7 @@ export default function App() {
       case 'tariffs': return <TariffsView tariffs={tariffs} partners={partners} onAddTariff={handleAddTariff} onEditTariff={handleEditTariff} onDeleteTariff={handleDeleteTariff} />;
       case 'invoices': return <InvoicesView invoices={invoices} voyages={voyages} partners={partners} orgName={org.companyName} onAddInvoice={handleAddInvoice} onUpdateInvoiceStatus={handleUpdateInvoiceStatus} onDeleteInvoice={handleDeleteInvoice} userName={currentUser.name} />;
       case 'approvals': return <ApprovalsView expenses={expenses} incidents={incidents} onApproveExpense={handleApproveExpense} onRejectExpense={handleRejectExpense} userRole={viewRole} currentUserId={currentUser.id} />;
-      case 'reports': return <ReportsView vessels={vessels} voyages={voyages} incidents={incidents} expenses={expenses} />;
+      case 'reports': return <ReportsView vessels={vessels} voyages={voyages} incidents={incidents} expenses={expenses} orgName={org.companyName} orgAddress={org.address} signedByName={currentUser.name} />;
       case 'laytime': return <LaytimeCalculatorView currentUser={currentUser} orgName={org.companyName} />;
       case 'notifications': return <NotificationsView notifications={notifications} onMarkRead={handleMarkNotificationRead} onClearAll={handleMarkAllNotificationsRead} userRole={currentUser.role} />;
       case 'settings': return <SettingsView userName={currentUser.name} userEmail={currentUser.email} userRole={currentUser.role} onUpdateProfile={handleUpdateProfile} />;

@@ -176,28 +176,18 @@ export default function ExpensesView({
     if (e.target.files?.[0]) { setDocFile(e.target.files[0]); setDocFileName(e.target.files[0].name); setDocError(null); }
   };
 
-  const triggerMockInvoiceDownload = () => {
-    const element = window.document.createElement("a");
-    const file = new Blob([
-      `APEX PORT AGENCY DISBURSEMENT ACCOUNT INVOICE\n`,
-      `==============================================\n`,
-      `Date Generated: ${new Date().toISOString().substring(0, 10)}\n`,
-      `Client Org: Apex Ocean Logistics Ltd\n`,
-      `Authorized By: ${userName} (${userRole})\n\n`,
-      `FINANCIAL SUMMARY:\n`,
-      `----------------------------------------------\n`,
-      `Total Estimated PDA Costs: $${totalEstimated.toLocaleString()}\n`,
-      `Total Verified Approved FDA Costs: $${totalApprovedActual.toLocaleString()}\n`,
-      `Outstanding Audits (Pending): $${totalPendingApproval.toLocaleString()}\n`,
-      `Variance Rate: +${Math.round(((totalApprovedActual - totalEstimated)/totalEstimated)*100) || 0}%\n\n`,
-      `BILLABLE ITEMS STATEMENT:\n`,
-      expenses.map(e => ` - ${e.category} (${e.voyageNumber}): $${e.amount} [PDA Est: $${e.estimatedAmount}] (${e.status})`).join('\n')
-    ], { type: 'text/plain' });
-    element.href = URL.createObjectURL(file);
-    element.download = `FDA_Invoice_Apex_${Date.now()}.txt`;
-    window.document.body.appendChild(element);
-    element.click();
-    window.document.body.removeChild(element);
+  // Full FDA-style PDF of the expenses currently in view (respects the voyage filter).
+  const downloadExpenseSummaryPdf = () => {
+    const scope = filteredExpenses.length ? filteredExpenses : expenses;
+    const voyLabel = voyageFilter === 'All' ? 'ALL PORT CALLS' : (voyages.find(v => v.id === voyageFilter)?.voyageNumber || voyageFilter);
+    printDocument(`Disbursement Summary ${voyLabel}`, disbursementHtml({
+      orgName,
+      kind: 'FDA',
+      voyageNumber: voyLabel,
+      vesselName: voyageFilter === 'All' ? 'Fleet-wide' : (voyages.find(v => v.id === voyageFilter)?.vesselName || ''),
+      currency: 'USD',
+      items: scope.map(e => ({ category: e.category, description: `${e.voyageNumber} — ${e.description}`, estimated: e.estimatedAmount, actual: e.amount, status: e.status })),
+    }));
   };
 
   return (
@@ -283,12 +273,12 @@ export default function ExpensesView({
           </select>
 
           <button
-            onClick={triggerMockInvoiceDownload}
+            onClick={downloadExpenseSummaryPdf}
             className="w-full sm:w-auto bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 font-semibold text-xs py-2 px-3 rounded-lg flex items-center justify-center space-x-1.5 cursor-pointer"
             title="Download full FDA report"
           >
             <Download className="h-4 w-4" />
-            <span>Generate PDF Invoice</span>
+            <span>Download Summary PDF</span>
           </button>
 
           <button
