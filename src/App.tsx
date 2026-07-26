@@ -100,6 +100,9 @@ export default function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
+  // Every app start opens on the landing page — even with a saved session —
+  // until the user clicks through. Not persisted, so a refresh shows it again.
+  const [landingDismissed, setLandingDismissed] = useState(false);
   const [selectedRole, setSelectedRole] = useState<string | undefined>();
 
   // States
@@ -234,6 +237,7 @@ export default function App() {
   }, [currentUser, vessels, voyages, tasks, expenses, incidents, laytimeCalculations]);
 
   const handleLoginSuccess = async (user: User) => {
+    setLandingDismissed(true); // explicit sign-in goes straight to the workspace
     setCurrentUser(user);
     await loadWorkspaceData(user.organizationId);
     loadPermissions(user).then(setPermissions).catch(() => {});
@@ -253,6 +257,8 @@ export default function App() {
     await Auth.signOut();
     setCurrentUser(null);
     clearWorkspaceData();
+    setLandingDismissed(false); // signing out returns to the landing page
+    setShowAuth(false);
   };
 
   const handleAddVessel = async (newVessel: Omit<Vessel, 'id'>): Promise<Vessel> => {
@@ -757,6 +763,18 @@ export default function App() {
       return <AuthView onLoginSuccess={handleLoginSuccess} onBack={() => setShowAuth(false)} initialRole={selectedRole} />;
     }
     return <LandingView onLoginClick={(role) => { setSelectedRole(role); setShowAuth(true); }} />;
+  }
+
+  // Signed-in users still start on the landing page each app launch; the CTA
+  // becomes "Enter your workspace" and "Switch account" signs them out first.
+  if (!landingDismissed) {
+    return (
+      <LandingView
+        sessionUserName={currentUser.name}
+        onEnterWorkspace={() => setLandingDismissed(true)}
+        onLoginClick={() => { handleLogout().then(() => setShowAuth(true)); }}
+      />
+    );
   }
 
   // Platform Team members (super admin or any platform role) get the platform

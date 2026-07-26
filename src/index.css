@@ -13,3 +13,8 @@
   --font-mono: "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --font-serif: "Playfair Display", ui-serif, Georgia, serif;
 }
+
+/* Smooth in-page scrolling for landing-page anchor links (#features, #pricing…). */
+html {
+  scroll-behavior: smooth;
+}
