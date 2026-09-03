@@ -6,7 +6,7 @@ import { Calendar, Ship, Anchor, Clock, AlertTriangle, ChevronLeft, ChevronRight
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 function dayKey(d: Date): string { const p = (n: number) => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; }
 
-const SERVICE_TYPES = ['Pilotage', 'Tug Services', 'Mooring / Unmooring', 'Bunkering', 'Fresh Water', 'Waste Disposal', 'Customs Clearance', 'Immigration', 'Surveyor', 'Chandlery', 'Crew Transport'];
+const SERVICE_TYPES = ['Pilotage', 'Tug Services', 'Mooring / Unmooring', 'Bunkering', 'Fresh Water', 'Waste Disposal', 'Customs Clearance', 'Immigration', 'Surveyor', 'Chandlery', 'Crew Transport', 'Others'];
 const SERVICE_STATUSES: ServiceStatus[] = ['Requested', 'Confirmed', 'In Progress', 'Completed', 'Cancelled'];
 const SERVICE_STATUS_COLOR: Record<ServiceStatus, string> = {
   Requested: 'bg-slate-100 text-slate-700', Confirmed: 'bg-sky-100 text-sky-700', 'In Progress': 'bg-amber-100 text-amber-700', Completed: 'bg-emerald-100 text-emerald-700', Cancelled: 'bg-rose-100 text-rose-700',

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Ship, 
   Search, 
@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { Vessel, VesselStatus, UserRole, User as AppUser } from '@/types';
 import Spinner from '@/components/ui/Spinner';
+import { lookupVessel } from '@/lib/supabase/vesselLookupApi';
 
 interface VesselsViewProps {
   vessels: Vessel[];
@@ -58,6 +59,47 @@ export default function VesselsView({
   const [voyageNumber, setVoyageNumber] = useState('');
   const [status, setStatus] = useState<VesselStatus>('Scheduled');
   const [assignedAgentId, setAssignedAgentId] = useState('');
+
+  // AIS auto-fill (VesselAPI, via vessel-lookup Edge Function): once the user
+  // types an IMO, name, or call sign, fill in the rest — but never overwrite
+  // a field they've already edited themselves.
+  const [flagTouched, setFlagTouched] = useState(false);
+  const [typeTouched, setTypeTouched] = useState(false);
+  const [gtTouched, setGtTouched] = useState(false);
+  const [lookupBusy, setLookupBusy] = useState(false);
+  const [lookupNote, setLookupNote] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!showAddModal) return;
+    const imoDigits = imo.replace(/\D/g, '');
+    const trimmedName = name.trim();
+    const trimmedCallSign = callSign.trim();
+    if (imoDigits.length !== 7 && trimmedCallSign.length < 2 && trimmedName.length < 3) {
+      setLookupNote(null);
+      return;
+    }
+    const handle = setTimeout(async () => {
+      setLookupBusy(true);
+      setLookupNote(null);
+      const params = imoDigits.length === 7
+        ? { imo: imoDigits }
+        : trimmedCallSign.length >= 2
+          ? { callsign: trimmedCallSign }
+          : { name: trimmedName };
+      const result = await lookupVessel(params);
+      setLookupBusy(false);
+      if (!result) {
+        setLookupNote('No AIS match found — enter the vessel details manually.');
+        return;
+      }
+      if (!flagTouched && result.flag) setFlag(result.flag);
+      if (!typeTouched && result.vesselType) setVesselType(result.vesselType);
+      if (!gtTouched && result.grossTonnage) setGt(result.grossTonnage);
+      setLookupNote('Auto-filled from live AIS data — please verify before saving.');
+    }, 700);
+    return () => clearTimeout(handle);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [imo, name, callSign, showAddModal]);
 
   // Edit Vessel Form State
   const [editingVessel, setEditingVessel] = useState<Vessel | null>(null);
@@ -171,6 +213,7 @@ export default function VesselsView({
       // Reset only on success.
       setName(''); setImo(''); setCallSign(''); setFlag(''); setCaptain('');
       setVoyageNumber(''); setAssignedAgentId('');
+      setFlagTouched(false); setTypeTouched(false); setGtTouched(false); setLookupNote(null);
       setShowAddModal(false);
     } catch (err) {
       setAddError(err instanceof Error ? err.message : 'Could not save the vessel. Please try again.');
@@ -415,11 +458,21 @@ export default function VesselsView({
                   />
                 </div>
 
+                {(lookupBusy || lookupNote) && (
+                  <div className="md:col-span-2 flex items-center gap-1.5 text-[11px] text-slate-500 -mt-1">
+                    {lookupBusy ? (
+                      <><Spinner className="h-3 w-3" /> Looking up vessel via AIS…</>
+                    ) : (
+                      <><Info className="h-3 w-3 shrink-0" /> {lookupNote}</>
+                    )}
+                  </div>
+                )}
+
                 <div className="space-y-1">
                   <label className="text-slate-500 font-semibold">Vessel Type</label>
                   <select
                     value={vesselType}
-                    onChange={(e) => setVesselType(e.target.value)}
+                    onChange={(e) => { setVesselType(e.target.value); setTypeTouched(true); }}
                     className="w-full border border-slate-200 rounded-lg p-2 focus:ring-1 focus:ring-[#6C4CE1] focus:outline-none cursor-pointer bg-white"
                   >
                     <option value="Container Ship">Container Ship</option>
@@ -436,7 +489,7 @@ export default function VesselsView({
                   <input
                     type="text"
                     value={flag}
-                    onChange={(e) => setFlag(e.target.value)}
+                    onChange={(e) => { setFlag(e.target.value); setFlagTouched(true); }}
                     placeholder="e.g. Panama"
                     className="w-full border border-slate-200 rounded-lg p-2 focus:ring-1 focus:ring-[#6C4CE1] focus:outline-none"
                   />
@@ -459,7 +512,7 @@ export default function VesselsView({
                   <input
                     type="number"
                     value={gt}
-                    onChange={(e) => setGt(Number(e.target.value))}
+                    onChange={(e) => { setGt(Number(e.target.value)); setGtTouched(true); }}
                     className="w-full border border-slate-200 rounded-lg p-2 focus:ring-1 focus:ring-[#6C4CE1] focus:outline-none"
                   />
                 </div>
