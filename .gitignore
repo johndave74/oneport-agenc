@@ -6,3 +6,6 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Local Supabase CLI state (project link cache, versions) - not for source control
+supabase/.temp/
