@@ -66,8 +66,19 @@ export default function VesselsView({
   const [flagTouched, setFlagTouched] = useState(false);
   const [typeTouched, setTypeTouched] = useState(false);
   const [gtTouched, setGtTouched] = useState(false);
+  const [etaTouched, setEtaTouched] = useState(false);
   const [lookupBusy, setLookupBusy] = useState(false);
   const [lookupNote, setLookupNote] = useState<string | null>(null);
+  const [lookupStale, setLookupStale] = useState(false);
+
+  // Turns a VesselAPI eta ("2026-08-26T05:00:00Z") into the local
+  // "YYYY-MM-DDTHH:mm" shape the datetime-local input expects.
+  function toDatetimeLocal(iso: string): string | null {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return null;
+    const p = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+  }
 
   useEffect(() => {
     if (!showAddModal) return;
@@ -81,6 +92,7 @@ export default function VesselsView({
     const handle = setTimeout(async () => {
       setLookupBusy(true);
       setLookupNote(null);
+      setLookupStale(false);
       const params = imoDigits.length === 7
         ? { imo: imoDigits }
         : trimmedCallSign.length >= 2
@@ -95,7 +107,24 @@ export default function VesselsView({
       if (!flagTouched && result.flag) setFlag(result.flag);
       if (!typeTouched && result.vesselType) setVesselType(result.vesselType);
       if (!gtTouched && result.grossTonnage) setGt(result.grossTonnage);
-      setLookupNote('Auto-filled from live AIS data — please verify before saving.');
+      // Fill in whichever identifier field(s) the user *didn't* type — never
+      // the one that drove this search, so we don't fight their typing.
+      if (!imo.trim() && result.imoNumber) setImo(result.imoNumber);
+      if (!callSign.trim() && result.callSign) setCallSign(result.callSign);
+      if (!trimmedName && result.vesselName) setName(result.vesselName);
+      let noteExtra = '';
+      if (!etaTouched && result.eta) {
+        const local = toDatetimeLocal(result.eta);
+        if (local) {
+          setEta(local);
+          const isPast = new Date(result.eta).getTime() < Date.now();
+          setLookupStale(isPast);
+          noteExtra = isPast
+            ? ' ETA is crew-reported and looks stale — double check it.'
+            : ' ETA is crew-reported — double check it.';
+        }
+      }
+      setLookupNote(`Auto-filled from live AIS data — please verify before saving.${noteExtra}`);
     }, 700);
     return () => clearTimeout(handle);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -213,7 +242,8 @@ export default function VesselsView({
       // Reset only on success.
       setName(''); setImo(''); setCallSign(''); setFlag(''); setCaptain('');
       setVoyageNumber(''); setAssignedAgentId('');
-      setFlagTouched(false); setTypeTouched(false); setGtTouched(false); setLookupNote(null);
+      setFlagTouched(false); setTypeTouched(false); setGtTouched(false); setEtaTouched(false);
+      setLookupNote(null); setLookupStale(false);
       setShowAddModal(false);
     } catch (err) {
       setAddError(err instanceof Error ? err.message : 'Could not save the vessel. Please try again.');
@@ -459,7 +489,7 @@ export default function VesselsView({
                 </div>
 
                 {(lookupBusy || lookupNote) && (
-                  <div className="md:col-span-2 flex items-center gap-1.5 text-[11px] text-slate-500 -mt-1">
+                  <div className={`md:col-span-2 flex items-center gap-1.5 text-[11px] -mt-1 ${lookupStale ? 'text-amber-600' : 'text-slate-500'}`}>
                     {lookupBusy ? (
                       <><Spinner className="h-3 w-3" /> Looking up vessel via AIS…</>
                     ) : (
@@ -619,7 +649,7 @@ export default function VesselsView({
                   <input
                     type="datetime-local"
                     value={eta}
-                    onChange={(e) => setEta(e.target.value)}
+                    onChange={(e) => { setEta(e.target.value); setEtaTouched(true); }}
                     className="w-full border border-slate-200 rounded-lg p-2 focus:ring-1 focus:ring-[#6C4CE1] focus:outline-none"
                   />
                 </div>

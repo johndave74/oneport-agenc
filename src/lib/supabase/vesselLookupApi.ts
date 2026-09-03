@@ -13,6 +13,11 @@ export interface VesselLookupResult {
   vesselType?: string;
   vesselTypeRaw?: string;
   grossTonnage?: number;
+  // Crew-reported over AIS, not OnePort data — can be stale by days. No ETD
+  // equivalent exists (a ship can't broadcast a departure time for a port
+  // it hasn't reached yet).
+  eta?: string;
+  destinationPort?: string;
 }
 
 export interface VesselLookupParams {

@@ -57,7 +57,7 @@ function mapVesselType(raw?: string | null): string | undefined {
   return undefined;
 }
 
-function normalize(v: Record<string, unknown> | null | undefined) {
+function normalize(v: Record<string, unknown> | null | undefined, etaData: Record<string, unknown> | null | undefined) {
   if (!v) return null;
   const vesselType = mapVesselType(v.vessel_type as string | undefined);
   return {
@@ -68,7 +68,24 @@ function normalize(v: Record<string, unknown> | null | undefined) {
     vesselType,
     vesselTypeRaw: (v.vessel_type as string) || undefined,
     grossTonnage: typeof v.gross_tonnage === 'number' ? v.gross_tonnage : undefined,
+    // Crew-reported over AIS, not OnePort data — can be days stale. No
+    // equivalent exists for ETD: a ship can't broadcast a departure time
+    // for a port it hasn't reached yet (that depends on cargo ops).
+    eta: (etaData?.eta as string) || undefined,
+    destinationPort: (etaData?.destination_port as string) || undefined,
   };
+}
+
+// Best-effort: a stale/never-broadcast ETA (VesselAPI's freshness horizon is
+// 31 days) just means no ETA data, not a failure of the main lookup.
+async function fetchEta(imo: string): Promise<Record<string, unknown> | null> {
+  try {
+    const body = await callVesselApi(`/vessel/${imo}/eta?filter.idType=imo`);
+    return (body?.vesselEta as Record<string, unknown>) ?? null;
+  } catch (err) {
+    console.warn('[vessel-lookup] ETA lookup failed (non-fatal):', err);
+    return null;
+  }
 }
 
 async function callVesselApi(path: string): Promise<Record<string, unknown> | null> {
@@ -134,7 +151,10 @@ Deno.serve(async (req) => {
       return json({ vessel: null });
     }
 
-    return json({ vessel: normalize(result) });
+    const resultImo = result?.imo != null ? String(result.imo) : null;
+    const etaData = resultImo ? await fetchEta(resultImo) : null;
+
+    return json({ vessel: normalize(result, etaData) });
   } catch (err) {
     console.error('[vessel-lookup] VesselAPI call failed:', err);
     return json({ error: 'Vessel lookup service is unavailable right now.' }, 502);
