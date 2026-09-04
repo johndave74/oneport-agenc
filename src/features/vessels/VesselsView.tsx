@@ -67,6 +67,7 @@ export default function VesselsView({
   const [typeTouched, setTypeTouched] = useState(false);
   const [gtTouched, setGtTouched] = useState(false);
   const [etaTouched, setEtaTouched] = useState(false);
+  const [currentPortTouched, setCurrentPortTouched] = useState(false);
   const [lookupBusy, setLookupBusy] = useState(false);
   const [lookupNote, setLookupNote] = useState<string | null>(null);
   const [lookupStale, setLookupStale] = useState(false);
@@ -112,6 +113,7 @@ export default function VesselsView({
       if (!imo.trim() && result.imoNumber) setImo(result.imoNumber);
       if (!callSign.trim() && result.callSign) setCallSign(result.callSign);
       if (!trimmedName && result.vesselName) setName(result.vesselName);
+      if (!currentPortTouched && result.destinationPort) setCurrentPort(result.destinationPort);
       let noteExtra = '';
       if (!etaTouched && result.eta) {
         const local = toDatetimeLocal(result.eta);
@@ -119,9 +121,10 @@ export default function VesselsView({
           setEta(local);
           const isPast = new Date(result.eta).getTime() < Date.now();
           setLookupStale(isPast);
+          const dest = result.destinationPort ? ` to ${result.destinationPort}` : '';
           noteExtra = isPast
-            ? ' ETA is crew-reported and looks stale — double check it.'
-            : ' ETA is crew-reported — double check it.';
+            ? ` ETA${dest} is crew-reported and looks stale — double check it.`
+            : ` ETA${dest} is crew-reported — double check it.`;
         }
       }
       setLookupNote(`Auto-filled from live AIS data — please verify before saving.${noteExtra}`);
@@ -243,7 +246,7 @@ export default function VesselsView({
       setName(''); setImo(''); setCallSign(''); setFlag(''); setCaptain('');
       setVoyageNumber(''); setAssignedAgentId('');
       setFlagTouched(false); setTypeTouched(false); setGtTouched(false); setEtaTouched(false);
-      setLookupNote(null); setLookupStale(false);
+      setCurrentPortTouched(false); setLookupNote(null); setLookupStale(false);
       setShowAddModal(false);
     } catch (err) {
       setAddError(err instanceof Error ? err.message : 'Could not save the vessel. Please try again.');
@@ -583,7 +586,7 @@ export default function VesselsView({
                   <input
                     type="text"
                     value={currentPort}
-                    onChange={(e) => setCurrentPort(e.target.value)}
+                    onChange={(e) => { setCurrentPort(e.target.value); setCurrentPortTouched(true); }}
                     className="w-full border border-slate-200 rounded-lg p-2 focus:ring-1 focus:ring-[#6C4CE1] focus:outline-none"
                   />
                 </div>
