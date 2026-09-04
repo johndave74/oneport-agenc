@@ -72,6 +72,20 @@ async function targetPlatformRole(admin: ReturnType<typeof createClient>, userId
   return (data as { platformRole?: string } | null)?.platformRole ?? null;
 }
 
+// hasUserManage() only checks that the CALLER holds users:manage — it says
+// nothing about which organization the TARGET user belongs to. Without this,
+// any org's admin could reset the password or delete a user in a completely
+// different organization (or platform staff). Platform admins are exempt —
+// managing every organization's users is their job.
+async function assertSameOrg(admin: ReturnType<typeof createClient>, caller: Caller, userId: string): Promise<string | null> {
+  if (caller.isPlatformAdmin) return null;
+  const { data: target } = await admin.from('users').select('organizationId').eq('id', userId).maybeSingle();
+  if (!target || (target as { organizationId?: string }).organizationId !== caller.organizationId) {
+    return 'You can only manage users within your own organization.';
+  }
+  return null;
+}
+
 async function hasUserManage(admin: ReturnType<typeof createClient>, caller: Caller): Promise<boolean> {
   if (caller.isPlatformAdmin) return true;
   if (!caller.roleId) return false;
@@ -187,6 +201,8 @@ Deno.serve(async (req) => {
       const userId = String(payload.userId ?? '');
       const password = String(payload.password ?? '');
       if (!userId || password.length < 8) return json({ error: 'userId and an 8+ char password are required' }, 400);
+      const orgErr = await assertSameOrg(admin, caller, userId);
+      if (orgErr) return json({ error: orgErr }, 403);
       // Only the Owner may reset the Owner's password.
       if ((await targetPlatformRole(admin, userId)) === 'PLATFORM_OWNER' && caller.id !== userId) {
         return json({ error: 'Platform Owner is protected and cannot be modified by staff.' }, 403);
@@ -204,6 +220,8 @@ Deno.serve(async (req) => {
       const userId = String(payload.userId ?? '');
       if (!userId) return json({ error: 'userId is required' }, 400);
       if (userId === caller.id) return json({ error: 'You cannot delete your own account' }, 400);
+      const orgErr = await assertSameOrg(admin, caller, userId);
+      if (orgErr) return json({ error: orgErr }, 403);
       if ((await targetPlatformRole(admin, userId)) === 'PLATFORM_OWNER') {
         return json({ error: 'Platform Owner cannot be deleted. Transfer ownership first.' }, 403);
       }
